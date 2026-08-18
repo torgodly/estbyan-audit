@@ -12,6 +12,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 #[Signature('deployment:fresh-audit {--force : Skip the confirmation prompt} {--skip-import : Wipe data without importing employees}')]
@@ -26,11 +27,19 @@ class FreshAuditDeploymentCommand extends Command
             return self::SUCCESS;
         }
 
+        if (! Schema::hasTable('employees') || ! Schema::hasTable('medical_registrations')) {
+            $this->components->error('Database tables are missing. Run `php artisan migrate --force` first, then retry.');
+
+            return self::FAILURE;
+        }
+
         $registrationCount = MedicalRegistration::query()->count();
         $employeeCount = Employee::query()->count();
 
         DB::transaction(function (): void {
-            RegistrationReviewLog::query()->delete();
+            if (Schema::hasTable('registration_review_logs')) {
+                RegistrationReviewLog::query()->delete();
+            }
 
             MedicalRegistration::query()
                 ->with('beneficiaries')

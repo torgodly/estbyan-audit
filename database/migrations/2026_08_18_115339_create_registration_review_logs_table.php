@@ -16,7 +16,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->timestamps();
 
-            $table->index(['medical_registration_id', 'created_at']);
+            $table->index(['medical_registration_id', 'created_at'], 'rrl_registration_created_at_idx');
         });
     }
 
