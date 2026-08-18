@@ -59,8 +59,7 @@ class ReferenceCardGenerator
         $auditX = $pairX + $plateW + $plateGap;
         $smartX = $pairX;
 
-        $this->roundedRect($image, $auditX, $plateY, $plateW, $plateH, 24, $white);
-        $this->roundedRectBorder($image, $auditX, $plateY, $plateW, $plateH, 24, $ring, 2);
+        $this->roundedRect($image, $auditX, $plateY, $plateW, $plateH, 24, $navy);
         $this->drawLogo(
             $image,
             $this->auditLogoPath(),

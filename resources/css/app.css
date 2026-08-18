@@ -452,7 +452,8 @@
     }
 
     .reg-login-partner-audit {
-        @apply bg-white/90 ring-1 ring-slate-200/80;
+        /* Cream crest needs a solid black plate to read clearly */
+        @apply bg-black shadow-lg shadow-black/20 ring-1 ring-slate-800;
     }
 
     .reg-login-partner-smart {
@@ -470,7 +471,7 @@
     }
 
     .reg-login-logo-audit {
-        @apply h-auto w-[7.5rem] sm:w-[8.5rem];
+        @apply h-auto w-[8.25rem] sm:w-[9.5rem];
     }
 
     .reg-login-logo-smart {
