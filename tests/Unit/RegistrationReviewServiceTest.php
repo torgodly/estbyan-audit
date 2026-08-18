@@ -19,7 +19,8 @@ it('approves submitted and declined registrations', function () {
 
     expect($submitted->status)->toBe(RegistrationStatus::Approved)
         ->and($submitted->review_note)->toBe('موافق')
-        ->and($submitted->reviewed_by)->toBe($reviewer->id);
+        ->and($submitted->reviewed_by)->toBe($reviewer->id)
+        ->and($submitted->reviewLogs()->count())->toBe(1);
 
     $declined = MedicalRegistration::factory()->declined()->create();
     $service->approve($declined, $reviewer, null);

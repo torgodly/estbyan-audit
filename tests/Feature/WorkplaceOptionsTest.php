@@ -2,18 +2,14 @@
 
 use App\Support\WorkplaceOptions;
 
-it('resolves tax authority workplaces and spreadsheet admin labels', function () {
+it('resolves audit bureau workplaces and spreadsheet admin labels', function () {
     expect(WorkplaceOptions::keyForLabel('الإدارة العامة'))->toBe('general_admin')
-        ->and(WorkplaceOptions::keyForLabel('سبها'))->toBe('sebha')
-        ->and(WorkplaceOptions::keyForLabel('صبراته'))->toBe('sabratha')
-        ->and(WorkplaceOptions::keyForLabel('بني وليد'))->toBe('bani_walid')
-        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('_ العامة'))->toBe('general_admin')
-        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('_ طرابلس'))->toBe('tripoli')
-        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('_ ترهونة ومسـلاته'))->toBe('tarhuna_msallata')
-        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('_جنزور'))->toBe('janzour')
-        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('كبار الممولين طرابلس'))->toBe('large_taxpayers_tripoli');
-});
-
-it('returns null for unknown workplaces', function () {
-    expect(WorkplaceOptions::keyForLabel('مكان غير موجود'))->toBeNull();
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('سبها'))->toBe('sebha')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('طرابلس'))->toBe('tripoli')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('صبراته / صرمان'))->toBe('sabratha_sorman')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('غرب جنوب طرابلس'))->toBe('west_south_tripoli')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('مسلاته'))->toBe('msallata')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin(''))->toBe('unclassified')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('مكتب رئيس الديوان'))->toBe('مكتب رئيس الديوان')
+        ->and(WorkplaceOptions::labelForKey('مكتب رئيس الديوان'))->toBe('مكتب رئيس الديوان');
 });

@@ -10,9 +10,10 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 #[Signature('employees:import {path? : Path to the employees xlsx file}')]
-#[Description('Import active employees from the Tax Authority staff spreadsheet')]
+#[Description('Import active employees from the Libyan Audit Bureau staff spreadsheet')]
 class ImportEmployeesCommand extends Command
 {
     public function handle(): int
@@ -34,12 +35,13 @@ class ImportEmployeesCommand extends Command
         DB::transaction(function () use ($spreadsheet, &$imported, &$skipped, &$seenNumbers, &$importedNumbers): void {
             foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
                 $highestRow = $worksheet->getHighestDataRow();
+                $startRow = $this->headerRow($worksheet) + 1;
 
-                for ($row = 5; $row <= $highestRow; $row++) {
-                    $employeeNumber = $this->cellString($worksheet, "B{$row}");
-                    $fullName = $this->cellString($worksheet, "C{$row}");
+                for ($row = $startRow; $row <= $highestRow; $row++) {
+                    $fullName = $this->cellString($worksheet, "B{$row}");
+                    $admin = $this->cellString($worksheet, "C{$row}");
                     $nationalId = $this->cellString($worksheet, "D{$row}");
-                    $admin = $this->cellString($worksheet, "E{$row}");
+                    $employeeNumber = $this->cellString($worksheet, "E{$row}");
 
                     if ($fullName === '' || $nationalId === '' || $employeeNumber === '') {
                         $skipped++;
@@ -50,7 +52,7 @@ class ImportEmployeesCommand extends Command
                     $workplaceKey = WorkplaceOptions::keyForSpreadsheetAdmin($admin);
 
                     if ($workplaceKey === null) {
-                        $this->warn("Unknown workplace «{$admin}» for employee {$employeeNumber}");
+                        $this->warn("Empty workplace for employee {$employeeNumber}");
                         $skipped++;
 
                         continue;
@@ -94,7 +96,30 @@ class ImportEmployeesCommand extends Command
         return self::SUCCESS;
     }
 
-    private function cellString(mixed $worksheet, string $coordinate): string
+    private function headerRow(Worksheet $worksheet): int
+    {
+        $highestRow = min(10, $worksheet->getHighestDataRow());
+
+        for ($row = 1; $row <= $highestRow; $row++) {
+            $b = $this->cellString($worksheet, "B{$row}");
+            $d = $this->cellString($worksheet, "D{$row}");
+            $e = $this->cellString($worksheet, "E{$row}");
+
+            if (
+                str_contains($b, 'اسم')
+                || str_contains($d, 'وطني')
+                || str_contains($e, 'ألي')
+                || str_contains($e, 'آلي')
+                || str_contains($e, 'الالي')
+            ) {
+                return $row;
+            }
+        }
+
+        return 3;
+    }
+
+    private function cellString(Worksheet $worksheet, string $coordinate): string
     {
         $value = $worksheet->getCell($coordinate)->getFormattedValue();
 

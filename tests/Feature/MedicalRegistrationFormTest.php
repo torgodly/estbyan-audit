@@ -27,9 +27,9 @@ it('shows registration form when enabled', function () {
         ->assertSee('منظومة الاستبيان', false)
         ->assertSee('info@smartcare.com.ly', false)
         ->assertSee('0921623448', false)
-        ->assertSee('إدارة الموارد البشرية بمصلحة الضرائب', false)
+        ->assertSee('إدارة الموارد البشرية بديوان المحاسبة الليبي', false)
         ->assertSee('images/brand/smart-care.png', false)
-        ->assertSee('images/brand/tax-authority.png', false)
+        ->assertSee('images/brand/audit-bureau.png', false)
         ->assertSee('reg-network-progress', false)
         ->assertSee('reg-loading-overlay', false)
         ->assertSee('لا يوجد اتصال بالإنترنت', false)
@@ -57,23 +57,24 @@ it('shows closed page when form is disabled', function () {
 it('exposes open graph tags on the registration form for share previews', function () {
     $this->get('/register')
         ->assertSuccessful()
-        ->assertSee('التسجيل الطبي — مصلحة الضرائب × SMART CARE', false)
-        ->assertSee('موظفي مصلحة الضرائب الليبية', false)
+        ->assertSee('التسجيل الطبي — ديوان المحاسبة الليبي × SMART CARE', false)
+        ->assertSee('موظفي ديوان المحاسبة الليبي', false)
         ->assertSee('og:site_name', false)
-        ->assertSee('مصلحة الضرائب · SMART CARE', false)
+        ->assertSee('ديوان المحاسبة · SMART CARE', false)
         ->assertSee('og:title', false)
         ->assertSee('og:description', false)
         ->assertSee('og:image', false)
         ->assertSee('images/og-registration.png', false)
         ->assertSee('og:image:alt', false)
-        ->assertSee('مصلحة الضرائب الليبية والرعاية الذكية', false)
+        ->assertSee('ديوان المحاسبة الليبي والرعاية الذكية', false)
         ->assertSee('twitter:card', false)
         ->assertSee('apple-touch-icon', false)
-        ->assertDontSee('ديوان المحاسبة', false);
+        ->assertDontSee('مصلحة الضرائب', false);
 });
 
 it('rejects invalid national id format at the gate', function () {
     Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '2001')
         ->set('nationalId', '123')
         ->set('consent', true)
         ->call('verifyIdentity')
@@ -83,10 +84,11 @@ it('rejects invalid national id format at the gate', function () {
 
 it('rejects non-employees at the identity gate', function () {
     Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '999888')
         ->set('nationalId', '119900112233')
         ->set('consent', true)
         ->call('verifyIdentity')
-        ->assertHasErrors('nationalId')
+        ->assertHasErrors(['nationalId', 'employeeNumber'])
         ->assertSet('step', 1);
 
     expect(MedicalRegistration::query()->count())->toBe(0);
@@ -101,6 +103,7 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '2001')
         ->set('nationalId', '119800507148')
         ->set('consent', true)
         ->call('verifyIdentity')
@@ -123,11 +126,13 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
 
 it('persists step one draft in session and restores on remount', function () {
     Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '4581')
         ->set('nationalId', '119700349522')
         ->set('consent', true)
         ->assertSet('hasSavedDraft', true);
 
     Livewire::test(MedicalRegistrationForm::class)
+        ->assertSet('employeeNumber', '4581')
         ->assertSet('nationalId', '119700349522')
         ->assertSet('consent', true)
         ->assertSet('hasSavedDraft', true);
@@ -317,7 +322,6 @@ it('continues to review when documents are already saved without re-uploading', 
         'workplace' => 'general_admin',
         'status' => RegistrationStatus::Draft,
         'current_step' => 6,
-        'family_status_document_path' => 'registrations/demo/family.pdf',
         'employee_photo_path' => 'registrations/demo/employee.jpg',
         'date_of_birth' => '1976-04-12',
         'phone' => '0912345678',
@@ -333,8 +337,8 @@ it('continues to review when documents are already saved without re-uploading', 
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('step', 5)
-        ->assertSee('صورة من شهادة الوضع العائلي')
-        ->assertSet('hasFamilyDocument', true)
+        ->assertDontSee('صورة من شهادة الوضع العائلي')
+        ->assertSee('الصورة الشخصية للموظف')
         ->assertSet('hasEmployeePhoto', true)
         ->call('saveDocuments')
         ->assertHasNoErrors()

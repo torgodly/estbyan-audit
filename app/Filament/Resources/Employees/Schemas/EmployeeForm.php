@@ -22,7 +22,7 @@ class EmployeeForm
                             ->required()
                             ->maxLength(255),
                         TextInput::make('employee_number')
-                            ->label('الرقم الوظيفي')
+                            ->label('الرقم الآلي')
                             ->required()
                             ->maxLength(50),
                         TextInput::make('national_id')

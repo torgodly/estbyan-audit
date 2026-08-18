@@ -7,7 +7,7 @@ use App\Support\RegistrationDocuments;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 
-it('wipes previous data and imports the tax authority roster', function () {
+it('wipes previous data and imports the audit bureau roster', function () {
     Storage::fake(RegistrationDocuments::DISK);
 
     $oldEmployee = Employee::factory()->create([
@@ -30,12 +30,12 @@ it('wipes previous data and imports the tax authority roster', function () {
 
     RegistrationDocuments::disk()->put('registrations/old/beneficiary.jpg', 'beneficiary');
 
-    Artisan::call('deployment:fresh-tax', ['--force' => true]);
+    Artisan::call('deployment:fresh-audit', ['--force' => true]);
 
     expect(Employee::query()->whereKey($oldEmployee->id)->exists())->toBeFalse()
         ->and(MedicalRegistration::query()->whereKey($registration->id)->exists())->toBeFalse()
         ->and(Beneficiary::query()->count())->toBe(0)
-        ->and(Employee::query()->where('is_active', true)->count())->toBeGreaterThan(4000)
-        ->and(Employee::query()->where('employee_number', '007017')->exists())->toBeTrue()
+        ->and(Employee::query()->where('is_active', true)->count())->toBeGreaterThan(1500)
+        ->and(Employee::query()->where('employee_number', '4566')->where('national_id', '119960475280')->exists())->toBeTrue()
         ->and(RegistrationDocuments::disk()->exists('registrations/old/photo.jpg'))->toBeFalse();
 });

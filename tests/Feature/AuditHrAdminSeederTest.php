@@ -3,19 +3,21 @@
 use App\Models\Employee;
 use App\Models\User;
 use App\Support\TestEmployees;
-use Database\Seeders\TaxHrAdminSeeder;
+use Database\Seeders\AuditHrAdminSeeder;
 use Database\Seeders\TestEmployeeSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 
-it('seeds the tax authority hr admin for the filament panel', function () {
-    $this->seed(TaxHrAdminSeeder::class);
+it('seeds three audit bureau hr admins for the filament panel', function () {
+    $this->seed(AuditHrAdminSeeder::class);
 
-    $admin = User::query()->where('email', TaxHrAdminSeeder::EMAIL)->first();
+    foreach (AuditHrAdminSeeder::accounts() as $account) {
+        $admin = User::query()->where('email', $account['email'])->first();
 
-    expect($admin)->not->toBeNull()
-        ->and($admin->name)->toBe('مصلحة الضرائب · الموارد البشرية')
-        ->and(Hash::check(TaxHrAdminSeeder::PASSWORD, $admin->password))->toBeTrue();
+        expect($admin)->not->toBeNull()
+            ->and($admin->name)->toBe($account['name'])
+            ->and(Hash::check($account['password'], $admin->password))->toBeTrue();
+    }
 });
 
 it('seeds fake smoke-test employees that are not real staff numbers', function () {
@@ -31,8 +33,8 @@ it('seeds fake smoke-test employees that are not real staff numbers', function (
             ])->exists())->toBeTrue();
     }
 
-    expect(TestEmployees::employeeNumbers())->not->toContain('007017')
-        ->and(TestEmployees::nationalIds())->not->toContain('119730351644');
+    expect(TestEmployees::employeeNumbers())->not->toContain('4566')
+        ->and(TestEmployees::nationalIds())->not->toContain('119960475280');
 });
 
 it('keeps fake smoke-test employees active after roster import', function () {

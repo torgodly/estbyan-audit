@@ -29,7 +29,7 @@ class MedicalRegistrationsTable
                         $record,
                         RegistrationDocuments::EMPLOYEE_PHOTO,
                     ))
-                    ->defaultImageUrl(url('/images/brand/tax-authority.png')),
+                    ->defaultImageUrl(url('/images/brand/audit-bureau.png')),
                 TextColumn::make('reference_number')
                     ->label('رقم المرجع')
                     ->searchable()
@@ -41,7 +41,7 @@ class MedicalRegistrationsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('employee_number')
-                    ->label('الرقم الوظيفي')
+                    ->label('الرقم الآلي')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('workplace')

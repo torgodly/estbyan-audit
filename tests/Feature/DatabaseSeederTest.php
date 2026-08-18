@@ -23,6 +23,6 @@ it('seeds a support admin and prints the hard password', function () {
 it('seeds employees from the bundled spreadsheet', function () {
     $this->seed(EmployeeSeeder::class);
 
-    expect(Employee::query()->count())->toBeGreaterThan(1000)
-        ->and(Employee::query()->where('workplace', 'general_admin')->exists())->toBeTrue();
+    expect(Employee::query()->count())->toBeGreaterThan(1500)
+        ->and(Employee::query()->where('employee_number', '4566')->exists())->toBeTrue();
 });

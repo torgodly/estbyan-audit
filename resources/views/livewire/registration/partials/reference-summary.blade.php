@@ -25,7 +25,7 @@
             @endif
             @if (filled($employeeNumber))
                 <div>
-                    <p class="text-xs text-slate-400">الرقم الوظيفي</p>
+                    <p class="text-xs text-slate-400">الرقم الآلي</p>
                     <p class="mt-0.5 font-bold text-slate-800" dir="ltr">{{ $employeeNumber }}</p>
                 </div>
             @endif

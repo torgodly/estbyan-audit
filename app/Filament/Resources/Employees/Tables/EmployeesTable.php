@@ -24,7 +24,7 @@ class EmployeesTable
                     ->sortable()
                     ->description(fn (Employee $record): string => $record->employee_number),
                 TextColumn::make('employee_number')
-                    ->label('الرقم الوظيفي')
+                    ->label('الرقم الآلي')
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

@@ -8,8 +8,8 @@
     display: none !important;
 }
 
-/* Tax Authority logo — keep original colors on light chrome. */
-.tax-admin-logo {
+/* Audit Bureau logo — keep original colors on light chrome. */
+.audit-admin-logo {
     height: 2.75rem;
     width: auto;
     object-fit: contain;

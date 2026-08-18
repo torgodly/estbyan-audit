@@ -38,7 +38,7 @@ class ViewMedicalRegistration extends ViewRecord
     {
         parent::mount($record);
 
-        $this->record->loadMissing(['employee', 'beneficiaries', 'reviewer']);
+        $this->record->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
     }
 
     public function content(Schema $schema): Schema
@@ -79,7 +79,7 @@ class ViewMedicalRegistration extends ViewRecord
                         $data['review_note'] ?? null,
                     );
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
+                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
 
                     Notification::make()->title('تم اعتماد الطلب')->success()->send();
                 }),
@@ -107,7 +107,7 @@ class ViewMedicalRegistration extends ViewRecord
                         (string) ($data['review_note'] ?? ''),
                     );
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
+                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
 
                     Notification::make()->title('تم رفض الطلب')->danger()->send();
                 }),
@@ -126,7 +126,7 @@ class ViewMedicalRegistration extends ViewRecord
                 ->visible(fn (): bool => filled($this->record->reference_number))
                 ->action(function (ReferenceCardGenerator $generator): StreamedResponse {
                     $png = $generator->png($this->record);
-                    $filename = 'tax-'.$this->record->reference_number.'.png';
+                    $filename = 'lab-'.$this->record->reference_number.'.png';
 
                     return response()->streamDownload(
                         function () use ($png): void {

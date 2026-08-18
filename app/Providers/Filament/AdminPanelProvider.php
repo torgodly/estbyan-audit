@@ -24,7 +24,7 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        $taxLogoUrl = asset('images/brand/tax-authority.png');
+        $auditLogoUrl = asset('images/brand/audit-bureau.png');
 
         return $panel
             ->default()
@@ -32,13 +32,13 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
-            ->brandName('مصلحة الضرائب · الموارد البشرية')
+            ->brandName('ديوان المحاسبة · الموارد البشرية')
             ->brandLogo(fn (): HtmlString => new HtmlString(
-                '<img src="'.e($taxLogoUrl).'" alt="مصلحة الضرائب" class="fi-logo tax-admin-logo">'
+                '<img src="'.e($auditLogoUrl).'" alt="ديوان المحاسبة الليبي" class="fi-logo audit-admin-logo">'
             ))
-            ->darkModeBrandLogo($taxLogoUrl)
+            ->darkModeBrandLogo($auditLogoUrl)
             ->brandLogoHeight('2.75rem')
-            ->favicon(asset('images/brand/tax-authority.png'))
+            ->favicon(asset('images/brand/audit-bureau.png'))
             ->colors([
                 'primary' => Color::hex('#0f2744'),
             ])

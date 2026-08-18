@@ -104,11 +104,16 @@ class Employee extends Model
         );
     }
 
-    public static function findForVerification(string $nationalId): ?self
+    public static function findForVerification(string $nationalId, ?string $employeeNumber = null): ?self
     {
-        return self::query()
+        $query = self::query()
             ->where('is_active', true)
-            ->where('national_id', $nationalId)
-            ->first();
+            ->where('national_id', $nationalId);
+
+        if (filled($employeeNumber)) {
+            $query->where('employee_number', $employeeNumber);
+        }
+
+        return $query->first();
     }
 }

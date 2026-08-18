@@ -4,7 +4,7 @@
         <p class="mt-2 text-center text-lg font-extrabold leading-snug sm:text-xl">{{ $verifiedFullName }}</p>
         <dl class="mt-4 grid grid-cols-2 gap-2.5 text-center sm:gap-3">
             <div class="rounded-xl bg-white/10 px-2.5 py-3">
-                <dt class="text-[11px] font-medium text-slate-300">الرقم الوظيفي</dt>
+                <dt class="text-[11px] font-medium text-slate-300">الرقم الآلي</dt>
                 <dd class="mt-1 text-sm font-bold tracking-wide sm:text-base" dir="ltr">{{ $employeeNumber }}</dd>
             </div>
             <div class="rounded-xl bg-white/10 px-2.5 py-3">

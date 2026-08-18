@@ -13,6 +13,7 @@ use App\Models\MedicalRegistration;
 use App\Rules\LibyanNationalId;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\RegistrationDocuments;
+use App\Support\WorkplaceOptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +24,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 #[Layout('layouts.registration')]
-#[Title('التسجيل الطبي — مصلحة الضرائب × SMART CARE')]
+#[Title('التسجيل الطبي — ديوان المحاسبة الليبي × SMART CARE')]
 class MedicalRegistrationForm extends Component
 {
     use WithFileUploads;
@@ -149,6 +150,7 @@ class MedicalRegistrationForm extends Component
         }
 
         if ($draft = session('registration_step1')) {
+            $this->employeeNumber = $draft['employee_number'] ?? '';
             $this->nationalId = $draft['national_id'] ?? '';
             $this->consent = (bool) ($draft['consent'] ?? false);
             $this->step = 1;
@@ -242,23 +244,27 @@ class MedicalRegistrationForm extends Component
 
     public function verifyIdentity(): void
     {
+        $this->employeeNumber = trim($this->employeeNumber);
+        $this->nationalId = trim($this->nationalId);
+
         $this->validateRules([
+            'employeeNumber' => ['required', 'string', 'max:20'],
             'nationalId' => ['required', 'string', new LibyanNationalId],
             'consent' => ['accepted'],
         ], [
+            'employeeNumber.required' => 'الرقم الآلي مطلوب',
             'nationalId.required' => 'الرقم الوطني مطلوب',
             'consent.accepted' => 'يجب الموافقة على سياسة الخصوصية للمتابعة',
         ]);
 
-        $employee = Employee::findForVerification($this->nationalId);
+        $employee = Employee::findForVerification($this->nationalId, $this->employeeNumber);
 
         if (! $employee) {
-            $this->addError('nationalId', 'لم يتم العثور على موظف بهذا الرقم الوطني.');
+            $this->addError('nationalId', 'لم يتم العثور على موظف بهذه البيانات. تحقق من الرقم الآلي والرقم الوطني.');
+            $this->addError('employeeNumber', 'لم يتم العثور على موظف بهذه البيانات.');
 
             return;
         }
-
-        $this->employeeNumber = $employee->employee_number;
 
         $genderFromNid = LibyanNationalIdSupport::gender($employee->national_id)->value;
 
@@ -373,7 +379,7 @@ class MedicalRegistrationForm extends Component
                     }
                 },
             ],
-            'workplace' => ['required', Rule::in(array_keys(config('registration.workplaces')))],
+            'workplace' => ['required', Rule::in(array_keys(WorkplaceOptions::options($this->workplace)))],
             'jobTitle' => ['nullable', Rule::in(array_keys(config('registration.job_titles')))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
@@ -628,29 +634,16 @@ class MedicalRegistrationForm extends Component
 
         $rules = [];
 
-        if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
-            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'];
-        }
-
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
             $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:10240'];
         }
 
         $this->validateRules($rules, [
-            'familyStatusDocument.required' => 'صورة من شهادة الوضع العائلي مطلوبة',
-            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF أو JPG أو PNG',
             'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
             'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
         ]);
 
         $path = "registrations/{$registration->uuid}";
-
-        if ($this->familyStatusDocument) {
-            $registration->family_status_document_path = $this->familyStatusDocument->store(
-                $path,
-                RegistrationDocuments::diskName(),
-            );
-        }
 
         if ($this->employeePhoto) {
             $registration->employee_photo_path = $this->employeePhoto->store(
@@ -659,20 +652,15 @@ class MedicalRegistrationForm extends Component
             );
         }
 
-        if (blank($registration->family_status_document_path)) {
-            $this->addError('familyStatusDocument', 'صورة من شهادة الوضع العائلي مطلوبة');
-
-            return;
-        }
-
         if (blank($registration->employee_photo_path)) {
             $this->addError('employeePhoto', 'الصورة الشخصية للموظف مطلوبة');
 
             return;
         }
 
+        $registration->family_status_document_path = null;
         $registration->save();
-        $this->hasFamilyDocument = true;
+        $this->hasFamilyDocument = false;
         $this->hasEmployeePhoto = true;
         $this->goToStep(6);
     }
@@ -703,10 +691,9 @@ class MedicalRegistrationForm extends Component
 
         if (
             ! $registration
-            || (! $registration->family_status_document_path && ! $this->hasFamilyDocument)
             || (! $registration->employee_photo_path && ! $this->hasEmployeePhoto)
         ) {
-            $this->addError('submit', 'يرجى إرفاق صورة من شهادة الوضع العائلي والصورة الشخصية قبل الإرسال');
+            $this->addError('submit', 'يرجى إرفاق الصورة الشخصية قبل الإرسال');
 
             return;
         }
@@ -796,7 +783,7 @@ class MedicalRegistrationForm extends Component
     public function render()
     {
         return view('livewire.medical-registration-form', [
-            'workplaces' => config('registration.workplaces'),
+            'workplaces' => WorkplaceOptions::options($this->workplace),
             'jobTitles' => config('registration.job_titles'),
             'cities' => config('registration.cities'),
             'chronicConditionOptions' => config('registration.chronic_conditions'),
@@ -871,6 +858,7 @@ class MedicalRegistrationForm extends Component
     {
         session([
             'registration_step1' => [
+                'employee_number' => $this->employeeNumber,
                 'national_id' => $this->nationalId,
                 'consent' => $this->consent,
             ],
@@ -881,7 +869,7 @@ class MedicalRegistrationForm extends Component
 
     protected function isStepOneField(string $property): bool
     {
-        return in_array($property, ['nationalId', 'consent'], true);
+        return in_array($property, ['employeeNumber', 'nationalId', 'consent'], true);
     }
 
     protected function isAutoPersistField(string $property): bool

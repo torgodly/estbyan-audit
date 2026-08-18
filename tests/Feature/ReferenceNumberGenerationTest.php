@@ -65,7 +65,6 @@ it('submits without colliding when a lower reference exists on a newer row', fun
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('step', 6)
-        ->set('hasFamilyDocument', true)
         ->set('hasEmployeePhoto', true)
         ->call('submitRegistration')
         ->assertHasNoErrors()

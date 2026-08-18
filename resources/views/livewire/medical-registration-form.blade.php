@@ -59,7 +59,7 @@
                 </div>
 
                 <footer class="hidden px-10 pb-6 text-center text-xs text-slate-400 lg:block">
-                    <p>مصلحة الضرائب · SMART CARE · التسجيل الطبي © {{ date('Y') }}</p>
+                    <p>ديوان المحاسبة · SMART CARE · التسجيل الطبي © {{ date('Y') }}</p>
                 </footer>
             </div>
         </div>

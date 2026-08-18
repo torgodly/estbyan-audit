@@ -451,7 +451,7 @@
         @apply flex h-[7.5rem] w-[calc(50%-0.75rem)] max-w-[13.5rem] flex-none items-center justify-center rounded-2xl p-3 sm:h-32 sm:w-[13.5rem] sm:p-4;
     }
 
-    .reg-login-partner-tax {
+    .reg-login-partner-audit {
         @apply bg-white/90 ring-1 ring-slate-200/80;
     }
 
@@ -464,13 +464,13 @@
         @apply w-px shrink-0 self-stretch bg-gradient-to-b from-transparent via-slate-300 to-transparent;
     }
 
-    .reg-login-logo-tax,
+    .reg-login-logo-audit,
     .reg-login-logo-smart {
         @apply max-h-full max-w-full object-contain;
     }
 
-    .reg-login-logo-tax {
-        @apply h-auto w-[11.5rem] sm:w-[12.5rem];
+    .reg-login-logo-audit {
+        @apply h-auto w-[7.5rem] sm:w-[8.5rem];
     }
 
     .reg-login-logo-smart {

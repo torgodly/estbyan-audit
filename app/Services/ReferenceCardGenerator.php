@@ -55,16 +55,16 @@ class ReferenceCardGenerator
         $pairX = (int) (($width - $pairW) / 2);
         $plateY = 88;
 
-        // Matching login markup order in RTL: tax authority on the right, Smart Care on the left.
-        $taxX = $pairX + $plateW + $plateGap;
+        // Matching login markup order in RTL: Audit Bureau on the right, Smart Care on the left.
+        $auditX = $pairX + $plateW + $plateGap;
         $smartX = $pairX;
 
-        $this->roundedRect($image, $taxX, $plateY, $plateW, $plateH, 24, $white);
-        $this->roundedRectBorder($image, $taxX, $plateY, $plateW, $plateH, 24, $ring, 2);
+        $this->roundedRect($image, $auditX, $plateY, $plateW, $plateH, 24, $white);
+        $this->roundedRectBorder($image, $auditX, $plateY, $plateW, $plateH, 24, $ring, 2);
         $this->drawLogo(
             $image,
-            $this->taxLogoPath(),
-            $taxX + 18,
+            $this->auditLogoPath(),
+            $auditX + 18,
             $plateY + 28,
             $plateW - 36,
             $plateH - 56,
@@ -84,7 +84,7 @@ class ReferenceCardGenerator
         $divX = $pairX + $plateW + (int) ($plateGap / 2);
         imageline($image, $divX, $plateY + 28, $divX, $plateY + $plateH - 28, $divider);
 
-        $this->drawCenteredArabic($image, $regular, 18, $slate, $width, 280, 'مصلحة الضرائب · الرعاية الذكية');
+        $this->drawCenteredArabic($image, $regular, 18, $slate, $width, 280, 'ديوان المحاسبة · الرعاية الذكية');
         $this->drawCenteredArabic($image, $bold, 36, $navy, $width, 335, 'بطاقة المراجعة');
 
         // Reference highlight
@@ -105,7 +105,7 @@ class ReferenceCardGenerator
         $rows = [
             ['label' => 'اسم الموظف', 'value' => $registration->full_name, 'arabic' => true],
             ['label' => 'الرقم الوطني', 'value' => $registration->national_id, 'arabic' => false],
-            ['label' => 'الرقم الوظيفي', 'value' => (string) $registration->employee_number, 'arabic' => false],
+            ['label' => 'الرقم الآلي', 'value' => (string) $registration->employee_number, 'arabic' => false],
         ];
 
         $rowY = 590;
@@ -142,9 +142,9 @@ class ReferenceCardGenerator
         return $path;
     }
 
-    protected function taxLogoPath(): string
+    protected function auditLogoPath(): string
     {
-        return public_path('images/brand/tax-authority.png');
+        return public_path('images/brand/audit-bureau.png');
     }
 
     /**
