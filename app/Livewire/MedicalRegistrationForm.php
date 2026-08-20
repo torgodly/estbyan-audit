@@ -47,7 +47,7 @@ class MedicalRegistrationForm extends Component
 
     public string $workplace = '';
 
-    public string $jobTitle = 'employee';
+    public string $jobTitle = '';
 
     public string $gender = 'male';
 
@@ -294,7 +294,6 @@ class MedicalRegistrationForm extends Component
                 'full_name' => $employee->full_name,
                 'employee_number' => $employee->employee_number,
                 'national_id' => $employee->national_id,
-                'workplace' => WorkplaceOptions::sanitizeKey($employee->workplace),
                 'gender' => $genderFromNid,
                 'consent_at' => $existing->consent_at ?? now(),
             ]);
@@ -337,7 +336,8 @@ class MedicalRegistrationForm extends Component
             'employee_number' => $employee->employee_number,
             'national_id' => $employee->national_id,
             'full_name' => $employee->full_name,
-            'workplace' => WorkplaceOptions::sanitizeKey($employee->workplace),
+            'workplace' => null,
+            'job_title' => null,
             'gender' => $genderFromNid,
             'status' => RegistrationStatus::Draft,
             'consent_at' => now(),
@@ -1051,7 +1051,7 @@ class MedicalRegistrationForm extends Component
         $this->fullName = $registration->full_name;
         $this->verifiedFullName = $registration->full_name;
         $this->workplace = WorkplaceOptions::sanitizeKey($registration->workplace) ?? '';
-        $this->jobTitle = $registration->job_title ?? 'employee';
+        $this->jobTitle = $registration->job_title ?? '';
         $this->gender = $registration->gender?->value ?? 'male';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
         $this->beneficiariesCount = (string) ($registration->beneficiaries_count ?? '');
@@ -1138,7 +1138,7 @@ class MedicalRegistrationForm extends Component
         ]);
 
         $this->step = 1;
-        $this->jobTitle = 'employee';
+        $this->jobTitle = '';
         $this->gender = 'male';
         $this->maritalStatus = 'married';
         $this->beneficiaryRelationship = BeneficiaryRelationship::Spouse->value;
