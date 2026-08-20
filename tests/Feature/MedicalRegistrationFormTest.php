@@ -122,7 +122,8 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->assertSet('step', 2)
         ->assertSet('employeeNumber', '2001')
         ->assertSet('verifiedFullName', 'أحمد محمد')
-        ->assertSet('workplace', 'hr_general')
+        ->assertSet('workplace', '')
+        ->assertSet('jobTitle', '')
         ->assertSet('gender', 'male')
         ->assertSet('identityLocked', true);
 
@@ -131,8 +132,31 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
     expect($registration)->not->toBeNull()
         ->and($registration->employee_id)->toBe($employee->id)
         ->and($registration->full_name)->toBe('أحمد محمد')
-        ->and($registration->workplace)->toBe('hr_general')
+        ->and($registration->workplace)->toBeNull()
+        ->and($registration->job_title)->toBeNull()
         ->and($registration->gender)->toBe(Gender::Male);
+});
+
+it('requires workplace and job title before continuing from employee details', function () {
+    Employee::factory()->create([
+        'employee_number' => '2101',
+        'national_id' => '119800507149',
+        'full_name' => 'علي محمد',
+        'workplace' => 'hr_general',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '2101')
+        ->set('nationalId', '119800507149')
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('dateOfBirth', '1980-01-01')
+        ->set('city', 'tripoli')
+        ->set('beneficiariesCount', '0')
+        ->set('address', 'طرابلس')
+        ->set('phone', '0912345678')
+        ->call('saveEmployeeDetails')
+        ->assertHasErrors(['workplace', 'jobTitle']);
 });
 
 it('persists step one draft in session and restores on remount', function () {
@@ -162,6 +186,8 @@ it('restores registration after refresh simulation', function () {
         ->set('nationalId', '219800123456')
         ->set('consent', true)
         ->call('verifyIdentity')
+        ->set('workplace', 'tripoli')
+        ->set('jobTitle', 'employee')
         ->set('dateOfBirth', '1980-01-01')
         ->set('city', 'tripoli')
         ->set('beneficiariesCount', '2')
@@ -180,7 +206,8 @@ it('restores registration after refresh simulation', function () {
         ->assertSet('step', 3)
         ->assertSet('phone', '0912345678')
         ->assertSet('verifiedFullName', 'سارة علي')
-        ->assertSet('workplace', 'tripoli');
+        ->assertSet('workplace', 'tripoli')
+        ->assertSet('jobTitle', 'employee');
 });
 
 it('requires date of birth year to match national id', function () {
@@ -196,6 +223,8 @@ it('requires date of birth year to match national id', function () {
         ->set('nationalId', '119850112233')
         ->set('consent', true)
         ->call('verifyIdentity')
+        ->set('workplace', 'hr_general')
+        ->set('jobTitle', 'employee')
         ->set('dateOfBirth', '1990-01-01')
         ->set('city', 'tripoli')
         ->set('beneficiariesCount', '0')
