@@ -63,7 +63,7 @@ it('mirrors eloquent writes to the cutover target while dual-write is enabled', 
     expect(DualWrite::enabled())->toBeTrue();
 
     $employee = Employee::factory()->create([
-        'employee_number' => '777001',
+        'employee_number' => '7771',
         'full_name' => 'كتابة مزدوجة',
     ]);
 

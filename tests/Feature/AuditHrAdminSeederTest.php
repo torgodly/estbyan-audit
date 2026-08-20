@@ -24,7 +24,7 @@ it('seeds fake smoke-test employees that are not real staff numbers', function (
     $this->seed(TestEmployeeSeeder::class);
 
     foreach (TestEmployees::definitions() as $definition) {
-        expect($definition['employee_number'])->toStartWith('99')
+        expect($definition['employee_number'])->toStartWith('999')
             ->and(Employee::query()->where([
                 'employee_number' => $definition['employee_number'],
                 'national_id' => $definition['national_id'],
@@ -33,8 +33,8 @@ it('seeds fake smoke-test employees that are not real staff numbers', function (
             ])->exists())->toBeTrue();
     }
 
-    expect(TestEmployees::employeeNumbers())->not->toContain('4566')
-        ->and(TestEmployees::nationalIds())->not->toContain('119960475280');
+    expect(TestEmployees::employeeNumbers())->not->toContain('1001')
+        ->and(TestEmployees::nationalIds())->not->toContain('219940178034');
 });
 
 it('keeps fake smoke-test employees active after roster import', function () {

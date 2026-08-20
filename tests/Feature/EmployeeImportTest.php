@@ -11,9 +11,8 @@ it('imports employees from the audit bureau spreadsheet', function () {
     Artisan::call('employees:import', ['path' => $path]);
 
     expect(Employee::query()->where('is_active', true)->count())->toBeGreaterThan(1500)
-        ->and(Employee::query()->where('workplace', 'sebha')->where('is_active', true)->exists())->toBeTrue()
-        ->and(Employee::query()->where('workplace', 'tripoli')->where('is_active', true)->exists())->toBeTrue()
-        ->and(Employee::query()->where('employee_number', '4566')->where('national_id', '119960475280')->exists())->toBeTrue()
-        ->and(Employee::query()->where('employee_number', '1')->where('national_id', '119800507148')->exists())->toBeTrue()
+        ->and(Employee::query()->where('employee_number', '1001')->where('national_id', '219940178034')->exists())->toBeTrue()
+        ->and(Employee::query()->where('employee_number', '1007')->where('national_id', '119730402498')->exists())->toBeTrue()
+        ->and(Employee::query()->whereNull('workplace')->where('is_active', true)->count())->toBeGreaterThan(1500)
         ->and(Employee::query()->whereNotNull('date_of_birth')->count())->toBe(0);
 });

@@ -248,11 +248,12 @@ class MedicalRegistrationForm extends Component
         $this->nationalId = trim($this->nationalId);
 
         $this->validateRules([
-            'employeeNumber' => ['required', 'string', 'max:20'],
+            'employeeNumber' => ['required', 'digits:4'],
             'nationalId' => ['required', 'string', new LibyanNationalId],
             'consent' => ['accepted'],
         ], [
-            'employeeNumber.required' => 'الرقم الآلي مطلوب',
+            'employeeNumber.required' => 'الرقم التأميني مطلوب',
+            'employeeNumber.digits' => 'الرقم التأميني يجب أن يتكون من 4 أرقام',
             'nationalId.required' => 'الرقم الوطني مطلوب',
             'consent.accepted' => 'يجب الموافقة على سياسة الخصوصية للمتابعة',
         ]);
@@ -260,8 +261,8 @@ class MedicalRegistrationForm extends Component
         $employee = Employee::findForVerification($this->nationalId, $this->employeeNumber);
 
         if (! $employee) {
-            $this->addError('nationalId', 'لم يتم العثور على موظف بهذه البيانات. تحقق من الرقم الآلي والرقم الوطني.');
-            $this->addError('employeeNumber', 'لم يتم العثور على موظف بهذه البيانات.');
+            $this->addError('nationalId', 'لم يتم العثور على موظف بهذه البيانات. تحقق من الرقم التأميني والرقم الوطني.');
+            $this->addError('employeeNumber', 'لم يتم العثور على موظف بهذه البيانات. تحقق من الرقم التأميني والرقم الوطني.');
 
             return;
         }
@@ -293,7 +294,7 @@ class MedicalRegistrationForm extends Component
                 'full_name' => $employee->full_name,
                 'employee_number' => $employee->employee_number,
                 'national_id' => $employee->national_id,
-                'workplace' => $employee->workplace,
+                'workplace' => WorkplaceOptions::sanitizeKey($employee->workplace),
                 'gender' => $genderFromNid,
                 'consent_at' => $existing->consent_at ?? now(),
             ]);
@@ -336,7 +337,7 @@ class MedicalRegistrationForm extends Component
             'employee_number' => $employee->employee_number,
             'national_id' => $employee->national_id,
             'full_name' => $employee->full_name,
-            'workplace' => $employee->workplace,
+            'workplace' => WorkplaceOptions::sanitizeKey($employee->workplace),
             'gender' => $genderFromNid,
             'status' => RegistrationStatus::Draft,
             'consent_at' => now(),
@@ -380,7 +381,7 @@ class MedicalRegistrationForm extends Component
                 },
             ],
             'workplace' => ['required', Rule::in(array_keys(WorkplaceOptions::options($this->workplace)))],
-            'jobTitle' => ['nullable', Rule::in(array_keys(config('registration.job_titles')))],
+            'jobTitle' => ['required', Rule::in(array_keys(config('registration.job_titles')))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
             'beneficiariesCount' => ['required', 'integer', 'min:0', 'max:20'],
@@ -391,10 +392,30 @@ class MedicalRegistrationForm extends Component
             'address' => ['required', 'string', 'max:500'],
         ], [
             'dateOfBirth.required' => 'تاريخ الميلاد مطلوب',
+            'dateOfBirth.date' => 'صيغة تاريخ الميلاد غير صحيحة',
+            'dateOfBirth.before' => 'تاريخ الميلاد يجب أن يكون قبل اليوم',
             'workplace.required' => 'مكان العمل مطلوب',
+            'workplace.in' => 'مكان العمل المحدد غير صالح',
+            'jobTitle.required' => 'الصفة مطلوبة',
+            'jobTitle.in' => 'الصفة المحددة غير صالحة',
+            'gender.required' => 'الجنس مطلوب',
+            'gender.in' => 'قيمة الجنس غير صالحة',
+            'maritalStatus.required' => 'الحالة الاجتماعية مطلوبة',
+            'maritalStatus.in' => 'الحالة الاجتماعية المحددة غير صالحة',
+            'beneficiariesCount.required' => 'عدد المستفيدين مطلوب',
+            'beneficiariesCount.integer' => 'عدد المستفيدين يجب أن يكون رقماً صحيحاً',
+            'beneficiariesCount.min' => 'عدد المستفيدين لا يمكن أن يكون أقل من صفر',
+            'beneficiariesCount.max' => 'عدد المستفيدين لا يمكن أن يتجاوز 20',
             'phone.required' => 'رقم الهاتف مطلوب',
+            'phone.min' => 'رقم الهاتف قصير جداً (9 أرقام على الأقل)',
+            'phone.max' => 'رقم الهاتف طويل جداً',
+            'whatsapp.max' => 'رقم الواتساب طويل جداً',
+            'email.email' => 'صيغة البريد الإلكتروني غير صحيحة',
+            'email.max' => 'البريد الإلكتروني طويل جداً',
             'city.required' => 'المدينة مطلوبة',
+            'city.in' => 'المدينة المحددة غير صالحة',
             'address.required' => 'العنوان السكني مطلوب',
+            'address.max' => 'العنوان السكني طويل جداً (الحد الأقصى 500 حرف)',
         ]);
 
         $this->autoPersistToDatabase();
@@ -408,9 +429,15 @@ class MedicalRegistrationForm extends Component
         }
 
         $this->validateRules([
-            'chronicConditions' => [Rule::requiredIf($this->hasChronicConditions), 'array'],
+            'chronicConditions' => [
+                Rule::requiredIf($this->hasChronicConditions),
+                'array',
+            ],
+            'chronicConditions.*' => [Rule::in(array_keys(config('registration.chronic_conditions')))],
         ], [
-            'chronicConditions.required' => 'يرجى تحديد الأمراض المزمنة على الأقل',
+            'chronicConditions.required' => 'يرجى تحديد مرض مزمن واحد على الأقل',
+            'chronicConditions.array' => 'قائمة الأمراض المزمنة غير صالحة',
+            'chronicConditions.*.in' => 'أحد الأمراض المزمنة المحددة غير صالح',
         ]);
 
         $this->autoPersistToDatabase();
@@ -454,7 +481,11 @@ class MedicalRegistrationForm extends Component
                 },
             ],
             'beneficiaryBloodType' => ['required', Rule::in(array_map(fn (BloodType $b) => $b->value, BloodType::cases()))],
-            'beneficiaryChronicConditions' => [Rule::requiredIf($this->beneficiaryHasChronicConditions), 'array'],
+            'beneficiaryChronicConditions' => [
+                Rule::requiredIf($this->beneficiaryHasChronicConditions),
+                'array',
+            ],
+            'beneficiaryChronicConditions.*' => [Rule::in(array_keys(config('registration.chronic_conditions')))],
             'beneficiaryPhoto' => [
                 Rule::requiredIf($this->editingBeneficiaryIndex === null && blank($this->beneficiaryExistingPhotoPath)),
                 'nullable',
@@ -466,13 +497,24 @@ class MedicalRegistrationForm extends Component
 
         $this->validateRules($rules, [
             'beneficiaryName.required' => 'اسم المستفيد مطلوب',
+            'beneficiaryName.max' => 'اسم المستفيد طويل جداً',
+            'beneficiaryRelationship.required' => 'صلة القرابة مطلوبة',
             'beneficiaryRelationship.in' => $this->maritalStatus === MaritalStatus::Single->value
                 ? 'الأعزب يمكنه إضافة الوالدين فقط'
-                : 'صلة القرابة غير صالحة',
+                : 'صلة القرابة المحددة غير صالحة',
             'beneficiaryNationalId.required' => 'الرقم الوطني للمستفيد مطلوب',
             'beneficiaryDateOfBirth.required' => 'تاريخ ميلاد المستفيد مطلوب',
+            'beneficiaryDateOfBirth.date' => 'صيغة تاريخ ميلاد المستفيد غير صحيحة',
+            'beneficiaryDateOfBirth.before' => 'تاريخ ميلاد المستفيد يجب أن يكون قبل اليوم',
+            'beneficiaryBloodType.required' => 'فصيلة دم المستفيد مطلوبة',
+            'beneficiaryBloodType.in' => 'فصيلة الدم المحددة غير صالحة',
             'beneficiaryPhoto.required' => 'صورة المستفيد مطلوبة',
-            'beneficiaryChronicConditions.required' => 'يرجى تحديد الأمراض المزمنة على الأقل',
+            'beneficiaryPhoto.image' => 'يجب أن يكون الملف صورة',
+            'beneficiaryPhoto.mimes' => 'صورة المستفيد يجب أن تكون بصيغة JPG أو PNG',
+            'beneficiaryPhoto.max' => 'حجم صورة المستفيد يجب ألا يتجاوز 10 ميجابايت',
+            'beneficiaryChronicConditions.required' => 'يرجى تحديد مرض مزمن واحد على الأقل للمستفيد',
+            'beneficiaryChronicConditions.array' => 'قائمة الأمراض المزمنة للمستفيد غير صالحة',
+            'beneficiaryChronicConditions.*.in' => 'أحد الأمراض المزمنة المحددة للمستفيد غير صالح',
         ]);
 
         $relationship = BeneficiaryRelationship::from($this->beneficiaryRelationship);
@@ -563,7 +605,7 @@ class MedicalRegistrationForm extends Component
         $this->beneficiaryDateOfBirth = $beneficiary['date_of_birth'] ?? '';
         $this->beneficiaryBloodType = $beneficiary['blood_type'];
         $this->beneficiaryHasChronicConditions = (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false);
-        $this->beneficiaryChronicConditions = $beneficiary['chronic_conditions'] ?? [];
+        $this->beneficiaryChronicConditions = $this->sanitizeChronicConditions($beneficiary['chronic_conditions'] ?? []);
         $this->beneficiaryHasTumor = (bool) ($beneficiary['has_tumor'] ?? false);
         $this->beneficiaryHasSurgeryHistory = (bool) ($beneficiary['has_surgery_history'] ?? false);
         $this->beneficiaryUsesMedicalDevices = (bool) ($beneficiary['uses_medical_devices'] ?? false);
@@ -640,7 +682,9 @@ class MedicalRegistrationForm extends Component
 
         $this->validateRules($rules, [
             'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
+            'employeePhoto.file' => 'يجب اختيار ملف صورة صالح',
             'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
+            'employeePhoto.max' => 'حجم صورة الموظف يجب ألا يتجاوز 10 ميجابايت',
         ]);
 
         $path = "registrations/{$registration->uuid}";
@@ -984,7 +1028,7 @@ class MedicalRegistrationForm extends Component
             'blood_type' => $b->blood_type?->value,
             'has_chronic_condition' => $b->has_chronic_condition || $b->has_chronic_conditions,
             'has_chronic_conditions' => $b->has_chronic_conditions || $b->has_chronic_condition,
-            'chronic_conditions' => $b->chronic_conditions ?? [],
+            'chronic_conditions' => $this->sanitizeChronicConditions($b->chronic_conditions ?? []),
             'has_tumor' => $b->has_tumor,
             'has_surgery_history' => $b->has_surgery_history,
             'uses_medical_devices' => $b->uses_medical_devices,
@@ -1006,7 +1050,7 @@ class MedicalRegistrationForm extends Component
         $this->consent = (bool) $registration->consent_at;
         $this->fullName = $registration->full_name;
         $this->verifiedFullName = $registration->full_name;
-        $this->workplace = $registration->workplace ?? '';
+        $this->workplace = WorkplaceOptions::sanitizeKey($registration->workplace) ?? '';
         $this->jobTitle = $registration->job_title ?? 'employee';
         $this->gender = $registration->gender?->value ?? 'male';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
@@ -1017,7 +1061,7 @@ class MedicalRegistrationForm extends Component
         $this->city = $registration->city ?? '';
         $this->address = $registration->address ?? '';
         $this->hasChronicConditions = (bool) $registration->has_chronic_conditions;
-        $this->chronicConditions = $registration->chronic_conditions ?? [];
+        $this->chronicConditions = $this->sanitizeChronicConditions($registration->chronic_conditions ?? []);
         $this->hasTumor = (bool) $registration->has_tumor;
         $this->hasSurgeryHistory = (bool) $registration->has_surgery_history;
         $this->usesMedicalDevices = (bool) $registration->uses_medical_devices;
@@ -1034,7 +1078,7 @@ class MedicalRegistrationForm extends Component
             'blood_type' => $b->blood_type?->value,
             'has_chronic_condition' => $b->has_chronic_condition || $b->has_chronic_conditions,
             'has_chronic_conditions' => $b->has_chronic_conditions || $b->has_chronic_condition,
-            'chronic_conditions' => $b->chronic_conditions ?? [],
+            'chronic_conditions' => $this->sanitizeChronicConditions($b->chronic_conditions ?? []),
             'has_tumor' => $b->has_tumor,
             'has_surgery_history' => $b->has_surgery_history,
             'uses_medical_devices' => $b->uses_medical_devices,
@@ -1192,18 +1236,97 @@ class MedicalRegistrationForm extends Component
     }
 
     /**
+     * @param  array<int, string>|null  $conditions
+     * @return list<string>
+     */
+    protected function sanitizeChronicConditions(?array $conditions): array
+    {
+        $allowed = array_keys(config('registration.chronic_conditions', []));
+
+        return array_values(array_intersect($conditions ?? [], $allowed));
+    }
+
+    /**
      * Livewire throws MissingRulesException when validate() receives an empty rules array
      * (e.g. documents already on file and no new uploads). Skip safely in that case.
      *
      * @param  array<string, mixed>  $rules
      * @param  array<string, string>  $messages
+     * @param  array<string, string>  $attributes
      */
-    protected function validateRules(array $rules, array $messages = []): void
+    protected function validateRules(array $rules, array $messages = [], array $attributes = []): void
     {
         if ($rules === []) {
             return;
         }
 
-        $this->validate($rules, $messages);
+        $this->validate(
+            $rules,
+            array_merge($this->arabicValidationMessages(), $messages),
+            array_merge($this->arabicValidationAttributes(), $attributes),
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function arabicValidationMessages(): array
+    {
+        return [
+            'required' => 'حقل :attribute مطلوب',
+            'string' => 'حقل :attribute يجب أن يكون نصاً',
+            'email' => 'صيغة :attribute غير صحيحة',
+            'date' => 'صيغة :attribute غير صحيحة',
+            'before' => 'حقل :attribute يجب أن يكون قبل :date',
+            'integer' => 'حقل :attribute يجب أن يكون رقماً صحيحاً',
+            'numeric' => 'حقل :attribute يجب أن يكون رقماً',
+            'min.numeric' => 'حقل :attribute يجب ألا يقل عن :min',
+            'min.string' => 'حقل :attribute قصير جداً (الحد الأدنى :min أحرف)',
+            'min.array' => 'حقل :attribute يجب أن يحتوي على :min عناصر على الأقل',
+            'max.numeric' => 'حقل :attribute يجب ألا يزيد عن :max',
+            'max.string' => 'حقل :attribute طويل جداً (الحد الأقصى :max أحرف)',
+            'max.file' => 'حجم :attribute يجب ألا يتجاوز :max كيلوبايت',
+            'max.array' => 'حقل :attribute يجب ألا يحتوي على أكثر من :max عناصر',
+            'in' => 'القيمة المحددة في :attribute غير صالحة',
+            'accepted' => 'يجب الموافقة على :attribute',
+            'image' => 'حقل :attribute يجب أن يكون صورة',
+            'mimes' => 'حقل :attribute يجب أن يكون ملفاً من نوع: :values',
+            'file' => 'حقل :attribute يجب أن يكون ملفاً',
+            'array' => 'حقل :attribute يجب أن يكون قائمة',
+            'nullable' => '',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function arabicValidationAttributes(): array
+    {
+        return [
+            'employeeNumber' => 'الرقم التأميني',
+            'nationalId' => 'الرقم الوطني',
+            'consent' => 'الموافقة على سياسة الخصوصية',
+            'dateOfBirth' => 'تاريخ الميلاد',
+            'workplace' => 'مكان العمل',
+            'jobTitle' => 'الصفة',
+            'gender' => 'الجنس',
+            'maritalStatus' => 'الحالة الاجتماعية',
+            'beneficiariesCount' => 'عدد المستفيدين',
+            'phone' => 'رقم الهاتف',
+            'whatsapp' => 'رقم الواتساب',
+            'email' => 'البريد الإلكتروني',
+            'city' => 'المدينة',
+            'address' => 'العنوان السكني',
+            'chronicConditions' => 'الأمراض المزمنة',
+            'beneficiaryName' => 'اسم المستفيد',
+            'beneficiaryRelationship' => 'صلة القرابة',
+            'beneficiaryNationalId' => 'الرقم الوطني للمستفيد',
+            'beneficiaryDateOfBirth' => 'تاريخ ميلاد المستفيد',
+            'beneficiaryBloodType' => 'فصيلة دم المستفيد',
+            'beneficiaryPhoto' => 'صورة المستفيد',
+            'beneficiaryChronicConditions' => 'الأمراض المزمنة للمستفيد',
+            'employeePhoto' => 'الصورة الشخصية للموظف',
+            'familyStatusDocument' => 'شهادة الوضع العائلي',
+        ];
     }
 }

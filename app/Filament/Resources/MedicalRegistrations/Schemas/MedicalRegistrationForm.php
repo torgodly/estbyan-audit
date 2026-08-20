@@ -25,8 +25,28 @@ class MedicalRegistrationForm
                     ->columns(2)
                     ->schema([
                         TextInput::make('full_name')->label('الاسم')->required(),
-                        TextInput::make('employee_number')->label('الرقم الآلي')->required(),
-                        TextInput::make('national_id')->label('الرقم الوطني')->required(),
+                        TextInput::make('employee_number')
+                            ->label('الرقم التأميني')
+                            ->required()
+                            ->numeric()
+                            ->length(4)
+                            ->rule('digits:4')
+                            ->validationMessages([
+                                'required' => 'الرقم التأميني مطلوب',
+                                'digits' => 'الرقم التأميني يجب أن يتكون من 4 أرقام',
+                                'length' => 'الرقم التأميني يجب أن يتكون من 4 أرقام',
+                            ]),
+                        TextInput::make('national_id')
+                            ->label('الرقم الوطني')
+                            ->required()
+                            ->numeric()
+                            ->length(12)
+                            ->rule('digits:12')
+                            ->validationMessages([
+                                'required' => 'الرقم الوطني مطلوب',
+                                'digits' => 'الرقم الوطني يجب أن يتكون من 12 رقماً',
+                                'length' => 'الرقم الوطني يجب أن يتكون من 12 رقماً',
+                            ]),
                         DatePicker::make('date_of_birth')->label('تاريخ الميلاد'),
                         Select::make('status')
                             ->label('الحالة')
@@ -46,9 +66,10 @@ class MedicalRegistrationForm
                     ->schema([
                         Select::make('workplace')
                             ->label('مكان العمل')
-                            ->options(config('registration.workplaces')),
+                            ->options(config('registration.workplaces'))
+                            ->searchable(),
                         Select::make('job_title')
-                            ->label('المسمى الوظيفي')
+                            ->label('الصفة')
                             ->options(config('registration.job_titles')),
                         Select::make('gender')
                             ->label('الجنس')

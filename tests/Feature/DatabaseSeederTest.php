@@ -24,5 +24,5 @@ it('seeds employees from the bundled spreadsheet', function () {
     $this->seed(EmployeeSeeder::class);
 
     expect(Employee::query()->count())->toBeGreaterThan(1500)
-        ->and(Employee::query()->where('employee_number', '4566')->exists())->toBeTrue();
+        ->and(Employee::query()->where('employee_number', '1001')->exists())->toBeTrue();
 });

@@ -14,12 +14,12 @@ class TestEmployees
         return [
             [
                 'full_name' => 'موظف تجريبي أول',
-                'employee_number' => '990001',
+                'employee_number' => '9991',
                 'national_id' => '119990000001',
             ],
             [
                 'full_name' => 'موظفة تجريبية ثانية',
-                'employee_number' => '990002',
+                'employee_number' => '9992',
                 'national_id' => '219990000002',
             ],
         ];

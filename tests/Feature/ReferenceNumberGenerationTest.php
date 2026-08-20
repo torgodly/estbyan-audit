@@ -34,18 +34,18 @@ it('submits without colliding when a lower reference exists on a newer row', fun
 
     $nationalId = LibyanNationalId::generate(Gender::Male, 1990);
     $employee = Employee::factory()->create([
-        'employee_number' => '88001',
+        'employee_number' => '8801',
         'national_id' => $nationalId,
         'full_name' => 'موظف مرجع',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     $registration = MedicalRegistration::factory()->create([
         'employee_id' => $employee->id,
-        'employee_number' => '88001',
+        'employee_number' => '8801',
         'national_id' => $nationalId,
         'full_name' => 'موظف مرجع',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
         'status' => RegistrationStatus::Draft,
         'reference_number' => null,
         'family_status_document_path' => 'registrations/demo/family.pdf',
@@ -60,7 +60,7 @@ it('submits without colliding when a lower reference exists on a newer row', fun
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '88001')
+        ->set('employeeNumber', '8801')
         ->set('nationalId', $nationalId)
         ->set('consent', true)
         ->call('verifyIdentity')

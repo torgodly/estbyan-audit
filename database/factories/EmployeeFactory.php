@@ -19,11 +19,11 @@ class EmployeeFactory extends Factory
         $birthYear = fake()->numberBetween(1965, 2000);
 
         return [
-            'employee_number' => (string) fake()->unique()->numberBetween(1000, 99999),
+            'employee_number' => (string) fake()->unique()->numberBetween(3000, 9999),
             'national_id' => LibyanNationalId::generate(Gender::Male, $birthYear),
             'date_of_birth' => null,
             'full_name' => fake()->name(),
-            'workplace' => 'general_admin',
+            'workplace' => 'hr_general',
             'is_active' => true,
         ];
     }

@@ -8,14 +8,14 @@
     display: none !important;
 }
 
-/* Audit Bureau logo — solid dark plate so the cream crest stays visible. */
+/* Audit Bureau logo — brand navy plate (not black/white). */
 .audit-admin-logo {
     height: 2.75rem;
     width: auto;
     object-fit: contain;
     padding: 0.35rem 0.55rem;
     border-radius: 0.65rem;
-    background: #000000;
+    background: #0f2744;
 }
 
 /* ── HR review workspace (solid, opaque, no glass) ── */

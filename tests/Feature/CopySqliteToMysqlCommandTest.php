@@ -90,7 +90,7 @@ it('live-syncs registration data between connections while preserving ids and co
     try {
         $user = User::factory()->create(['email' => 'copy-test@example.com']);
         $employee = Employee::factory()->create([
-            'employee_number' => '888001',
+            'employee_number' => '8881',
             'full_name' => 'موظف نسخ',
         ]);
         $registration = MedicalRegistration::factory()->submitted()->create([
@@ -151,7 +151,7 @@ it('prunes orphan target rows during live sync', function () {
     config(['database.default' => 'copy_source']);
 
     try {
-        Employee::factory()->create(['employee_number' => '888010']);
+        Employee::factory()->create(['employee_number' => '8880']);
     } finally {
         config(['database.default' => $previousDefault]);
     }
@@ -159,7 +159,7 @@ it('prunes orphan target rows during live sync', function () {
     DB::connection('copy_target')->table('employees')->insert([
         'full_name' => 'يتيم',
         'national_id' => '000000000099',
-        'employee_number' => 'orphan-1',
+        'employee_number' => 'orph',
         'date_of_birth' => '1990-01-01',
         'is_active' => 1,
         'created_at' => now(),
@@ -174,6 +174,6 @@ it('prunes orphan target rows during live sync', function () {
         '--passes' => 1,
     ]))->toBe(0);
 
-    expect(DB::connection('copy_target')->table('employees')->where('employee_number', 'orphan-1')->exists())->toBeFalse()
-        ->and(DB::connection('copy_target')->table('employees')->where('employee_number', '888010')->exists())->toBeTrue();
+    expect(DB::connection('copy_target')->table('employees')->where('employee_number', 'orph')->exists())->toBeFalse()
+        ->and(DB::connection('copy_target')->table('employees')->where('employee_number', '8880')->exists())->toBeTrue();
 });

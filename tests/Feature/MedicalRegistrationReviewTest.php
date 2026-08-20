@@ -128,7 +128,7 @@ it('shows selected chronic conditions inside the medical accordion details', fun
     $admin = User::factory()->create();
     $registration = MedicalRegistration::factory()->submitted()->create([
         'has_chronic_conditions' => true,
-        'chronic_conditions' => ['heart_disease', 'epilepsy'],
+        'chronic_conditions' => ['heart_disease', 'diabetes'],
     ]);
 
     $this->actingAs($admin);
@@ -136,8 +136,8 @@ it('shows selected chronic conditions inside the medical accordion details', fun
     Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
         ->assertSuccessful()
         ->assertSee('الأمراض المزمنة المحددة')
-        ->assertSee('أمراض القلب')
-        ->assertSee('الصرع');
+        ->assertSee('أمراض القلب والشرايين')
+        ->assertSee('السكري');
 });
 
 it('hides approve action for already approved registrations', function () {

@@ -14,13 +14,20 @@ class SeedTestEmployeesCommand extends Command
 {
     public function handle(): int
     {
+        // Drop legacy smoke-test numbers if the insurance-number format changed.
+        Employee::query()
+            ->whereIn('employee_number', ['990001', '990002'])
+            ->orWhereIn('national_id', TestEmployees::nationalIds())
+            ->whereNotIn('employee_number', TestEmployees::employeeNumbers())
+            ->delete();
+
         foreach (TestEmployees::definitions() as $definition) {
             $employee = Employee::query()->updateOrCreate(
                 ['employee_number' => $definition['employee_number']],
                 [
                     'national_id' => $definition['national_id'],
                     'full_name' => $definition['full_name'],
-                    'workplace' => 'general_admin',
+                    'workplace' => 'hr_general',
                     'date_of_birth' => null,
                     'is_active' => true,
                 ],

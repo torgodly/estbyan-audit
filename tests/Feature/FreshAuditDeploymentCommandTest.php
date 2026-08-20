@@ -36,6 +36,6 @@ it('wipes previous data and imports the audit bureau roster', function () {
         ->and(MedicalRegistration::query()->whereKey($registration->id)->exists())->toBeFalse()
         ->and(Beneficiary::query()->count())->toBe(0)
         ->and(Employee::query()->where('is_active', true)->count())->toBeGreaterThan(1500)
-        ->and(Employee::query()->where('employee_number', '4566')->where('national_id', '119960475280')->exists())->toBeTrue()
+        ->and(Employee::query()->where('employee_number', '1001')->where('national_id', '219940178034')->exists())->toBeTrue()
         ->and(RegistrationDocuments::disk()->exists('registrations/old/photo.jpg'))->toBeFalse();
 });

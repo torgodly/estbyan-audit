@@ -452,8 +452,8 @@
     }
 
     .reg-login-partner-audit {
-        /* Cream crest needs a solid black plate to read clearly */
-        @apply bg-black shadow-lg shadow-black/20 ring-1 ring-slate-800;
+        /* Brand navy plate — not black/white; cream crest stays readable */
+        @apply bg-navy-900 shadow-lg shadow-navy-900/15 ring-1 ring-navy-800;
     }
 
     .reg-login-partner-smart {
@@ -502,7 +502,9 @@
     }
 
     .reg-login-field {
+        /* Keep icon + padding aligned: inputs are LTR (insurance / national id). */
         @apply relative;
+        direction: ltr;
     }
 
     .reg-login-field-icon {
@@ -510,7 +512,7 @@
     }
 
     .reg-login-input {
-        @apply ps-11;
+        @apply ps-11 pe-4;
     }
 
     .reg-login-contact {

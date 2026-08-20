@@ -41,7 +41,7 @@ class MedicalRegistrationsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('employee_number')
-                    ->label('الرقم الآلي')
+                    ->label('الرقم التأميني')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('workplace')

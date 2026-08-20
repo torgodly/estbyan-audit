@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Employee;
 use App\Support\TestEmployees;
-use App\Support\WorkplaceOptions;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -34,14 +33,18 @@ class ImportEmployeesCommand extends Command
 
         DB::transaction(function () use ($spreadsheet, &$imported, &$skipped, &$seenNumbers, &$importedNumbers): void {
             foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
-                $highestRow = $worksheet->getHighestDataRow();
-                $startRow = $this->headerRow($worksheet) + 1;
+                $headerRow = $this->headerRow($worksheet);
 
-                for ($row = $startRow; $row <= $highestRow; $row++) {
+                if ($headerRow === null) {
+                    continue;
+                }
+
+                $highestRow = $worksheet->getHighestDataRow();
+
+                for ($row = $headerRow + 1; $row <= $highestRow; $row++) {
                     $fullName = $this->cellString($worksheet, "B{$row}");
-                    $admin = $this->cellString($worksheet, "C{$row}");
-                    $nationalId = $this->cellString($worksheet, "D{$row}");
-                    $employeeNumber = $this->cellString($worksheet, "E{$row}");
+                    $nationalId = $this->cellString($worksheet, "C{$row}");
+                    $employeeNumber = $this->cellString($worksheet, "D{$row}");
 
                     if ($fullName === '' || $nationalId === '' || $employeeNumber === '') {
                         $skipped++;
@@ -49,17 +52,22 @@ class ImportEmployeesCommand extends Command
                         continue;
                     }
 
-                    $workplaceKey = WorkplaceOptions::keyForSpreadsheetAdmin($admin);
+                    if (! preg_match('/^\d{4}$/', $employeeNumber)) {
+                        $this->warn("Invalid insurance number «{$employeeNumber}» for «{$fullName}» — expected 4 digits");
+                        $skipped++;
 
-                    if ($workplaceKey === null) {
-                        $this->warn("Empty workplace for employee {$employeeNumber}");
+                        continue;
+                    }
+
+                    if (! preg_match('/^\d{12}$/', $nationalId)) {
+                        $this->warn("Invalid national id «{$nationalId}» for employee {$employeeNumber}");
                         $skipped++;
 
                         continue;
                     }
 
                     if (isset($seenNumbers[$employeeNumber])) {
-                        $this->warn("Duplicate employee number {$employeeNumber} — keeping first occurrence");
+                        $this->warn("Duplicate insurance number {$employeeNumber} — keeping first occurrence");
                         $skipped++;
 
                         continue;
@@ -73,7 +81,7 @@ class ImportEmployeesCommand extends Command
                         [
                             'national_id' => $nationalId,
                             'full_name' => $fullName,
-                            'workplace' => $workplaceKey,
+                            'workplace' => null,
                             'date_of_birth' => null,
                             'is_active' => true,
                         ],
@@ -96,27 +104,24 @@ class ImportEmployeesCommand extends Command
         return self::SUCCESS;
     }
 
-    private function headerRow(Worksheet $worksheet): int
+    private function headerRow(Worksheet $worksheet): ?int
     {
         $highestRow = min(10, $worksheet->getHighestDataRow());
 
         for ($row = 1; $row <= $highestRow; $row++) {
             $b = $this->cellString($worksheet, "B{$row}");
+            $c = $this->cellString($worksheet, "C{$row}");
             $d = $this->cellString($worksheet, "D{$row}");
-            $e = $this->cellString($worksheet, "E{$row}");
 
-            if (
-                str_contains($b, 'اسم')
-                || str_contains($d, 'وطني')
-                || str_contains($e, 'ألي')
-                || str_contains($e, 'آلي')
-                || str_contains($e, 'الالي')
-            ) {
-                return $row;
+            $looksLikeHeader = (str_contains($b, 'اسم') || str_contains($c, 'وطني') || str_contains($d, 'تأمين'));
+            $looksLikeData = $b !== '' && preg_match('/^\d{10,}$/', $c) && preg_match('/^\d+$/', $d);
+
+            if ($looksLikeHeader || $looksLikeData) {
+                return $looksLikeData ? $row - 1 : $row;
             }
         }
 
-        return 3;
+        return null;
     }
 
     private function cellString(Worksheet $worksheet, string $coordinate): string

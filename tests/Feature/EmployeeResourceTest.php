@@ -21,12 +21,12 @@ it('lists employees and supports search', function () {
 
     $target = Employee::factory()->create([
         'full_name' => 'خالد المستهدف',
-        'employee_number' => '77881',
-        'national_id' => '1199001000123',
+        'employee_number' => '7788',
+        'national_id' => '119900100012',
     ]);
     Employee::factory()->create([
         'full_name' => 'موظف آخر',
-        'employee_number' => '11002',
+        'employee_number' => '1102',
     ]);
 
     $this->actingAs($admin);
@@ -34,10 +34,10 @@ it('lists employees and supports search', function () {
     Livewire::test(ListEmployees::class)
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$target])
-        ->searchTable('77881')
+        ->searchTable('7788')
         ->assertCanSeeTableRecords([$target])
         ->assertCanNotSeeTableRecords(
-            Employee::query()->where('employee_number', '11002')->get()
+            Employee::query()->where('employee_number', '1102')->get()
         );
 });
 
@@ -87,7 +87,7 @@ it('shows the employee dossier with registration history and submission state', 
     $admin = User::factory()->create();
     $employee = Employee::factory()->create([
         'full_name' => 'نادية الملف',
-        'employee_number' => '33445',
+        'employee_number' => '3344',
     ]);
     $registration = MedicalRegistration::factory()->submitted()->create([
         'employee_id' => $employee->id,
@@ -102,7 +102,7 @@ it('shows the employee dossier with registration history and submission state', 
     Livewire::test(ViewEmployee::class, ['record' => $employee->getRouteKey()])
         ->assertSuccessful()
         ->assertSee('نادية الملف')
-        ->assertSee('33445')
+        ->assertSee('3344')
         ->assertSee('أرسل النموذج')
         ->assertSee('سجل طلبات التسجيل')
         ->assertSee('SC26-12345')

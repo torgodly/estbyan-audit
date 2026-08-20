@@ -142,7 +142,7 @@
 
                             <div class="hr-kpis">
                                 <div class="hr-kpi">
-                                    <span class="hr-kpi__label">الرقم الآلي</span>
+                                    <span class="hr-kpi__label">الرقم التأميني</span>
                                     <div class="hr-kpi__value">{{ $registration->employee_number ?: '—' }}</div>
                                 </div>
                                 <div class="hr-kpi">

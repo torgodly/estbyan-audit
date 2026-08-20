@@ -35,7 +35,7 @@
                 <dd>{{ $workplaces[$workplace] ?? '—' }}</dd>
             </div>
             <div class="reg-report-item">
-                <dt>المسمى الوظيفي</dt>
+                <dt>الصفة</dt>
                 <dd>{{ $jobTitles[$jobTitle] ?? '—' }}</dd>
             </div>
             <div class="reg-report-item">

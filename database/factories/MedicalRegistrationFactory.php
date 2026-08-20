@@ -18,10 +18,10 @@ class MedicalRegistrationFactory extends Factory
     {
         return [
             'employee_id' => Employee::factory(),
-            'employee_number' => (string) fake()->unique()->numberBetween(1000, 99999),
-            'national_id' => fake()->unique()->numerify('#############'),
+            'employee_number' => (string) fake()->unique()->numberBetween(3000, 9999),
+            'national_id' => fake()->unique()->numerify('############'),
             'full_name' => fake()->name(),
-            'workplace' => 'general_admin',
+            'workplace' => 'hr_general',
             'status' => RegistrationStatus::Draft,
             'current_step' => 2,
             'consent_at' => now(),

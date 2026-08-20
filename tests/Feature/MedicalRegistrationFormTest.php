@@ -84,7 +84,7 @@ it('rejects invalid national id format at the gate', function () {
 
 it('rejects non-employees at the identity gate', function () {
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '999888')
+        ->set('employeeNumber', '8888')
         ->set('nationalId', '119900112233')
         ->set('consent', true)
         ->call('verifyIdentity')
@@ -94,12 +94,23 @@ it('rejects non-employees at the identity gate', function () {
     expect(MedicalRegistration::query()->count())->toBe(0);
 });
 
+it('rejects insurance numbers that are not exactly 4 digits', function () {
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '10011')
+        ->set('nationalId', '119800507148')
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertHasErrors(['employeeNumber'])
+        ->assertSee('الرقم التأميني يجب أن يتكون من 4 أرقام')
+        ->assertSet('step', 1);
+});
+
 it('unlocks the form for a valid employee and prefills locked fields', function () {
     $employee = Employee::factory()->create([
         'employee_number' => '2001',
         'national_id' => '119800507148',
         'full_name' => 'أحمد محمد',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
@@ -111,7 +122,7 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->assertSet('step', 2)
         ->assertSet('employeeNumber', '2001')
         ->assertSet('verifiedFullName', 'أحمد محمد')
-        ->assertSet('workplace', 'general_admin')
+        ->assertSet('workplace', 'hr_general')
         ->assertSet('gender', 'male')
         ->assertSet('identityLocked', true);
 
@@ -120,7 +131,7 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
     expect($registration)->not->toBeNull()
         ->and($registration->employee_id)->toBe($employee->id)
         ->and($registration->full_name)->toBe('أحمد محمد')
-        ->and($registration->workplace)->toBe('general_admin')
+        ->and($registration->workplace)->toBe('hr_general')
         ->and($registration->gender)->toBe(Gender::Male);
 });
 
@@ -177,7 +188,7 @@ it('requires date of birth year to match national id', function () {
         'employee_number' => '3101',
         'national_id' => '119850112233',
         'full_name' => 'كريم سالم',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
@@ -223,7 +234,7 @@ it('saves a beneficiary with photo medical record and validated national id', fu
         'employee_number' => '5001',
         'national_id' => '219890080065',
         'full_name' => 'نادية حسن',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     $photo = UploadedFile::fake()->image('spouse.jpg');
@@ -271,7 +282,7 @@ it('hides the beneficiary card while its edit form is open', function () {
         'employee_number' => '5002',
         'national_id' => $employeeNationalId,
         'full_name' => 'سامي علي',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     $photo = UploadedFile::fake()->image('member.jpg');
@@ -311,7 +322,7 @@ it('continues to review when documents are already saved without re-uploading', 
         'employee_number' => '5005',
         'national_id' => $employeeNationalId,
         'full_name' => 'إبراهيم صالح',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     MedicalRegistration::factory()->create([
@@ -319,7 +330,7 @@ it('continues to review when documents are already saved without re-uploading', 
         'employee_number' => '5005',
         'national_id' => $employeeNationalId,
         'full_name' => 'إبراهيم صالح',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
         'status' => RegistrationStatus::Draft,
         'current_step' => 6,
         'employee_photo_path' => 'registrations/demo/employee.jpg',
@@ -352,7 +363,7 @@ it('reserves scroll space under the fixed mobile action sheet on the final repor
         'employee_number' => '5004',
         'national_id' => $employeeNationalId,
         'full_name' => 'يوسف أحمد',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
@@ -380,7 +391,7 @@ it('renders a readable beneficiaries review section on the final report', functi
         'employee_number' => '5003',
         'national_id' => $employeeNationalId,
         'full_name' => 'خالد منصور',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     $photo = UploadedFile::fake()->image('spouse.jpg');
@@ -510,7 +521,7 @@ it('starts editing a submitted registration from the first form step with data f
         'employee_number' => '6002',
         'national_id' => $employeeNationalId,
         'full_name' => 'سامي عمر',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     MedicalRegistration::factory()->submitted()->create([
@@ -518,7 +529,7 @@ it('starts editing a submitted registration from the first form step with data f
         'employee_number' => '6002',
         'national_id' => $employeeNationalId,
         'full_name' => 'سامي عمر',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
         'reference_number' => 'SC26-00066',
         'date_of_birth' => '1985-03-10',
         'phone' => '0922222222',
@@ -551,7 +562,7 @@ it('does not trap verified users on the login gate when current_step is 1', func
         'employee_number' => '6010',
         'national_id' => $employeeNationalId,
         'full_name' => 'نادر سليمان',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     MedicalRegistration::factory()->create([
@@ -559,7 +570,7 @@ it('does not trap verified users on the login gate when current_step is 1', func
         'employee_number' => '6010',
         'national_id' => $employeeNationalId,
         'full_name' => 'نادر سليمان',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
         'status' => RegistrationStatus::Editing,
         'reference_number' => 'SC26-00088',
         'current_step' => 1,
@@ -595,7 +606,7 @@ it('blocks going back to the login gate after identity is verified', function ()
         'employee_number' => '6011',
         'national_id' => $employeeNationalId,
         'full_name' => 'كريم فرج',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     MedicalRegistration::factory()->create([
@@ -603,7 +614,7 @@ it('blocks going back to the login gate after identity is verified', function ()
         'employee_number' => '6011',
         'national_id' => $employeeNationalId,
         'full_name' => 'كريم فرج',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
         'status' => RegistrationStatus::Draft,
         'current_step' => 2,
         'consent_at' => now(),
@@ -722,7 +733,7 @@ it('blocks editing when the registration is approved', function () {
         'employee_number' => '7001',
         'national_id' => '219900556677',
         'full_name' => 'ليلى فرج',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     MedicalRegistration::factory()->approved()->create([
@@ -730,7 +741,7 @@ it('blocks editing when the registration is approved', function () {
         'employee_number' => '7001',
         'national_id' => '219900556677',
         'full_name' => 'ليلى فرج',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
         'reference_number' => 'SC26-00077',
     ]);
 
@@ -751,7 +762,7 @@ it('logs out from the success page without deleting the registration', function 
         'employee_number' => '6020',
         'national_id' => $employeeNationalId,
         'full_name' => 'راشد منصور',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
     ]);
 
     $registration = MedicalRegistration::factory()->submitted()->create([
@@ -759,7 +770,7 @@ it('logs out from the success page without deleting the registration', function 
         'employee_number' => '6020',
         'national_id' => $employeeNationalId,
         'full_name' => 'راشد منصور',
-        'workplace' => 'general_admin',
+        'workplace' => 'hr_general',
         'reference_number' => 'SC26-00099',
         'date_of_birth' => '1981-02-02',
         'phone' => '0913334444',

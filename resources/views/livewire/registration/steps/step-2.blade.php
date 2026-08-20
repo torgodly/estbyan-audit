@@ -4,7 +4,7 @@
         <p class="mt-2 text-center text-lg font-extrabold leading-snug sm:text-xl">{{ $verifiedFullName }}</p>
         <dl class="mt-4 grid grid-cols-2 gap-2.5 text-center sm:gap-3">
             <div class="rounded-xl bg-white/10 px-2.5 py-3">
-                <dt class="text-[11px] font-medium text-slate-300">الرقم الآلي</dt>
+                <dt class="text-[11px] font-medium text-slate-300">الرقم التأميني</dt>
                 <dd class="mt-1 text-sm font-bold tracking-wide sm:text-base" dir="ltr">{{ $employeeNumber }}</dd>
             </div>
             <div class="rounded-xl bg-white/10 px-2.5 py-3">
@@ -23,27 +23,23 @@
         <div class="reg-grid-2">
             <div>
                 <label class="reg-label">مكان العمل <span class="reg-required">*</span></label>
-                @if ($identityLocked)
-                    <div class="reg-input bg-slate-50 font-bold text-navy-900">
-                        {{ $workplaces[$workplace] ?? $workplace }}
-                    </div>
-                @else
-                    <select wire:model.live="workplace" class="reg-select">
-                        <option value="">— اختر —</option>
-                        @foreach ($workplaces as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                @endif
+                <x-reg-searchable-select
+                    wire:model.live="workplace"
+                    :options="$workplaces"
+                    placeholder="— اختر مكان العمل —"
+                    search-placeholder="ابحث عن مكان العمل..."
+                />
                 @error('workplace') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="reg-label">المسمى الوظيفي</label>
+                <label class="reg-label">الصفة <span class="reg-required">*</span></label>
                 <select wire:model.live="jobTitle" class="reg-select">
+                    <option value="">— اختر —</option>
                     @foreach ($jobTitles as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
                 </select>
+                @error('jobTitle') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
         </div>
 

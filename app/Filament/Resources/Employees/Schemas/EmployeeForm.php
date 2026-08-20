@@ -22,13 +22,27 @@ class EmployeeForm
                             ->required()
                             ->maxLength(255),
                         TextInput::make('employee_number')
-                            ->label('الرقم الآلي')
+                            ->label('الرقم التأميني')
                             ->required()
-                            ->maxLength(50),
+                            ->numeric()
+                            ->length(4)
+                            ->rule('digits:4')
+                            ->validationMessages([
+                                'required' => 'الرقم التأميني مطلوب',
+                                'digits' => 'الرقم التأميني يجب أن يتكون من 4 أرقام',
+                                'length' => 'الرقم التأميني يجب أن يتكون من 4 أرقام',
+                            ]),
                         TextInput::make('national_id')
                             ->label('الرقم الوطني')
                             ->required()
-                            ->maxLength(20),
+                            ->numeric()
+                            ->length(12)
+                            ->rule('digits:12')
+                            ->validationMessages([
+                                'required' => 'الرقم الوطني مطلوب',
+                                'digits' => 'الرقم الوطني يجب أن يتكون من 12 رقماً',
+                                'length' => 'الرقم الوطني يجب أن يتكون من 12 رقماً',
+                            ]),
                         Select::make('workplace')
                             ->label('مكان العمل')
                             ->options(fn (): array => config('registration.workplaces', []))

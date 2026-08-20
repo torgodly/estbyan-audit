@@ -104,7 +104,7 @@ class ReferenceCardGenerator
         $rows = [
             ['label' => 'اسم الموظف', 'value' => $registration->full_name, 'arabic' => true],
             ['label' => 'الرقم الوطني', 'value' => $registration->national_id, 'arabic' => false],
-            ['label' => 'الرقم الآلي', 'value' => (string) $registration->employee_number, 'arabic' => false],
+            ['label' => 'الرقم التأميني', 'value' => (string) $registration->employee_number, 'arabic' => false],
         ];
 
         $rowY = 590;

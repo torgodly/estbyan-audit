@@ -25,27 +25,42 @@ class WorkplaceOptions
 
     public static function labelForKey(?string $key): ?string
     {
-        if ($key === null || $key === '') {
+        if ($key === null || $key === '' || ! self::isKnownKey($key)) {
             return null;
         }
 
-        return config('registration.workplaces.'.$key) ?? $key;
+        return config('registration.workplaces.'.$key);
+    }
+
+    public static function isKnownKey(?string $key): bool
+    {
+        if ($key === null || $key === '') {
+            return false;
+        }
+
+        return array_key_exists($key, config('registration.workplaces', []));
     }
 
     /**
-     * Resolve a workplace key from the Audit Bureau spreadsheet الإدارة / الفرع column.
-     *
-     * Known branches map to config keys; department names are stored as cleaned Arabic labels.
+     * Drop legacy / unknown workplace keys (e.g. old tax-authority values).
+     */
+    public static function sanitizeKey(?string $key): ?string
+    {
+        return self::isKnownKey($key) ? $key : null;
+    }
+
+    /**
+     * Resolve a workplace key from a spreadsheet الإدارة / الفرع column.
      */
     public static function keyForSpreadsheetAdmin(string $raw): ?string
     {
         $label = self::cleanSpreadsheetAdmin($raw);
 
-        if ($label === '') {
-            return 'unclassified';
+        if ($label === '' || $label === 'بدون تصنيف') {
+            return null;
         }
 
-        return self::keyForLabel($label) ?? $label;
+        return self::keyForLabel($label);
     }
 
     public static function cleanSpreadsheetAdmin(string $raw): string
@@ -62,13 +77,7 @@ class WorkplaceOptions
      */
     public static function options(?string $includeKey = null): array
     {
-        $options = config('registration.workplaces', []);
-
-        if (filled($includeKey) && ! array_key_exists($includeKey, $options)) {
-            $options[$includeKey] = self::labelForKey($includeKey) ?? $includeKey;
-        }
-
-        return $options;
+        return config('registration.workplaces', []);
     }
 
     /**
@@ -77,58 +86,21 @@ class WorkplaceOptions
     protected static function aliases(): array
     {
         return [
-            'العامة' => 'general_admin',
-            'الادارة العامة' => 'general_admin',
-            'الإدارة العامة' => 'general_admin',
-            'بدون تصنيف' => 'unclassified',
-            'الجفـارة' => 'al_jafara',
-            'الجفارة' => 'al_jafara',
-            'الشاطيء' => 'al_shati',
-            'الشاطئ' => 'al_shati',
-            'الشاطي' => 'al_shati',
-            'وادى الشاطئ' => 'al_shati',
-            'وادي الشاطئ' => 'al_shati',
-            'ترهونة ومسـلاته' => 'tarhuna_msallata',
-            'ترهونة ومسلاته' => 'tarhuna_msallata',
-            'ترهونة ومسلاتة' => 'tarhuna_msallata',
-            'ترهونة' => 'tarhuna',
-            'مسلاته' => 'msallata',
-            'مسلاتة' => 'msallata',
-            'زواره' => 'zuwara',
-            'زوارة' => 'zuwara',
-            'مراده' => 'marada',
-            'مرادة' => 'marada',
-            'مصراته' => 'misrata',
-            'مصراتة' => 'misrata',
             'فرع بني وليد' => 'bani_walid',
             'بني وليد' => 'bani_walid',
-            'وادي الحياة' => 'wadi_al_hayat',
+            'وادى الشاطئ' => 'al_shati',
+            'وادي الشاطئ' => 'al_shati',
+            'الشاطئ' => 'al_shati',
             'وادي الاجال' => 'wadi_al_hayat',
             'وادي الأجال' => 'wadi_al_hayat',
+            'وادي الحياة' => 'wadi_al_hayat',
             'صبراته / صرمان' => 'sabratha_sorman',
             'صبراته صرمان' => 'sabratha_sorman',
-            'صبراته' => 'sabratha',
-            'صرمان' => 'sorman',
             'غرب جنوب طرابلس' => 'west_south_tripoli',
             'جنوب غرب طرابلس' => 'west_south_tripoli',
-            'طرابلس' => 'tripoli',
-            'سبها' => 'sebha',
-            'غريان' => 'gharyan',
-            'نالوت' => 'nalut',
-            'غات' => 'ghat',
-            'غدامس' => 'ghadames',
-            'مرزق' => 'murzuq',
-            'مزدة' => 'mizda',
-            'زليتن' => 'zliten',
-            'الزاوية' => 'al_zawiya',
-            'العجيلات' => 'al_ajaylat',
-            'المرقب' => 'al_murqub',
-            'الجفرة' => 'al_jufra',
-            'الاصابعة' => 'al_asabaa',
-            'الجميل' => 'al_jamil',
-            'الزنتان' => 'al_zintan',
-            'جادو' => 'jado',
-            'باطن الجبل' => 'batin_al_jabal',
+            'مسلاتة' => 'msallata',
+            'زوارة' => 'zuwara',
+            'زواره' => 'zuwara',
         ];
     }
 
