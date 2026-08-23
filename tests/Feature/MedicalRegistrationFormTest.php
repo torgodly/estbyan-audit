@@ -208,6 +208,28 @@ it('rejects address numbers and invalid libyan phone prefixes', function () {
         ->assertHasErrors(['address', 'phone']);
 });
 
+it('shows validation summary messages in the form when step two fails', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1980);
+
+    Employee::factory()->create([
+        'employee_number' => '3344',
+        'national_id' => $nationalId,
+        'full_name' => 'عرض الأخطاء',
+        'workplace' => 'hr_general',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '3344')
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->call('saveEmployeeDetails')
+        ->assertHasErrors(['workplace', 'dateOfBirth', 'phone', 'city', 'address'])
+        ->assertSee('يرجى تصحيح الأخطاء التالية', false)
+        ->assertSee('مكان العمل مطلوب', false)
+        ->assertSee('رقم الهاتف مطلوب', false);
+});
+
 it('accepts valid libyan mobiles starting with 091 to 094', function () {
     expect(LibyanPhoneNumber::isValid('0912345678'))->toBeTrue()
         ->and(LibyanPhoneNumber::isValid('0922345678'))->toBeTrue()

@@ -230,6 +230,8 @@
 
 <div class="reg-actions">
     <div class="reg-actions-dock">
+        @include('livewire.registration.partials.validation-summary', ['compact' => true])
+
         <div class="reg-actions-inner">
             <button
                 type="button"

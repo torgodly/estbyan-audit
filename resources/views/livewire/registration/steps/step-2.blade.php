@@ -28,6 +28,7 @@
                     :options="$workplaces"
                     placeholder="— اختر مكان العمل —"
                     search-placeholder="ابحث عن مكان العمل..."
+                    @class(['reg-input-invalid' => $errors->has('workplace')])
                 />
                 @error('workplace') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
@@ -42,7 +43,11 @@
         <div class="reg-grid-2">
             <div>
                 <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
-                <input wire:model.blur="dateOfBirth" type="date" class="reg-input">
+                <input
+                    wire:model.blur="dateOfBirth"
+                    type="date"
+                    @class(['reg-input', 'reg-input-invalid' => $errors->has('dateOfBirth')])
+                >
                 @if (\App\Support\LibyanNationalId::isValid($nationalId))
                     <p class="mt-1 text-xs text-slate-400">يجب أن تكون سنة الميلاد {{ \App\Support\LibyanNationalId::birthYear($nationalId) }} حسب الرقم الوطني</p>
                 @endif
@@ -59,7 +64,7 @@
 
         <div>
             <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
-            <select wire:model.live="maritalStatus" class="reg-select">
+            <select wire:model.live="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
                 <option value="single">أعزب / عزباء</option>
                 <option value="married">متزوج / متزوجة</option>
             </select>
@@ -70,6 +75,7 @@
                     المستفيدون يُضافون لاحقاً: أب واحد وأم واحدة
                 @endif
             </p>
+            @error('maritalStatus') <p class="reg-field-error">{{ $message }}</p> @enderror
         </div>
     </div>
 
@@ -88,7 +94,7 @@
                         inputmode="numeric"
                         maxlength="10"
                         pattern="09[1-4][0-9]{7}"
-                        class="reg-input"
+                        @class(['reg-input', 'reg-input-invalid' => $errors->has('phone')])
                         placeholder="091XXXXXXX"
                         dir="ltr"
                         x-on:input="$el.value = $el.value.replace(/\D+/g, '').slice(0, 10)"
@@ -104,7 +110,7 @@
                         inputmode="numeric"
                         maxlength="10"
                         pattern="09[1-4][0-9]{7}"
-                        class="reg-input"
+                        @class(['reg-input', 'reg-input-invalid' => $errors->has('whatsapp')])
                         placeholder="091XXXXXXX"
                         dir="ltr"
                         x-on:input="$el.value = $el.value.replace(/\D+/g, '').slice(0, 10)"
@@ -115,7 +121,13 @@
             </div>
             <div>
                 <label class="reg-label">البريد الإلكتروني</label>
-                <input wire:model.blur="email" type="email" dir="ltr" class="reg-input text-left">
+                <input
+                    wire:model.blur="email"
+                    type="email"
+                    dir="ltr"
+                    @class(['reg-input', 'text-left', 'reg-input-invalid' => $errors->has('email')])
+                >
+                @error('email') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
             <div class="reg-grid-2">
                 <div>
@@ -125,6 +137,7 @@
                         :options="$cities"
                         placeholder="— اختر المدينة —"
                         search-placeholder="ابحث عن المدينة..."
+                        @class(['reg-input-invalid' => $errors->has('city')])
                     />
                     @error('city') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
@@ -133,7 +146,7 @@
                     <input
                         wire:model.blur="address"
                         type="text"
-                        class="reg-input"
+                        @class(['reg-input', 'reg-input-invalid' => $errors->has('address')])
                         x-on:input="$el.value = $el.value.replace(/[0-9٠-٩]/g, '')"
                     >
                     <p class="mt-1 text-xs text-slate-400">بدون أرقام — مثال: حي الأندلس، شارع الجمهورية</p>

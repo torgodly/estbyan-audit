@@ -95,6 +95,8 @@
             </label>
             @error('consent') <p class="reg-field-error mt-2">{{ $message }}</p> @enderror
 
+            @include('livewire.registration.partials.validation-summary')
+
             <button
                 type="button"
                 wire:click="verifyIdentity"

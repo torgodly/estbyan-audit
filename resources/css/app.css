@@ -147,6 +147,27 @@
         @apply mt-1.5 flex items-center gap-1.5 text-sm font-medium text-red-600;
     }
 
+    .reg-input-invalid {
+        @apply border-red-400 bg-red-50/40 focus:border-red-500 focus:ring-red-500/15;
+    }
+
+    .reg-input-invalid .reg-select,
+    .reg-select.reg-input-invalid {
+        @apply border-red-400 bg-red-50/40 focus:border-red-500 focus:ring-red-500/15;
+    }
+
+    .reg-validation-summary {
+        @apply mb-4 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3.5 text-sm shadow-sm shadow-red-500/5;
+    }
+
+    .reg-validation-summary-compact {
+        @apply mb-3;
+    }
+
+    .reg-validation-summary-icon {
+        @apply mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600;
+    }
+
     .reg-grid-2 {
         @apply grid grid-cols-1 gap-4 sm:grid-cols-2;
     }

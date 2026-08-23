@@ -48,7 +48,7 @@
                     <input
                         wire:model.blur="beneficiaryName"
                         type="text"
-                        class="reg-input"
+                        @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryName')])
                         x-on:input="$el.value = $el.value.replace(/[0-9٠-٩]/g, '')"
                     >
                     <p class="mt-1 text-xs text-slate-400">{{ \App\Support\PersonName::HINT }}</p>
@@ -57,7 +57,7 @@
                 <div class="reg-grid-2">
                     <div>
                         <label class="reg-label">القرابة</label>
-                        <select wire:model.live="beneficiaryRelationship" class="reg-select">
+                        <select wire:model.live="beneficiaryRelationship" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryRelationship')])>
                             @foreach ($this->availableBeneficiaryRelationships() as $relationship)
                                 <option value="{{ $relationship->value }}">
                                     {{ $relationship->label() }}
@@ -78,23 +78,36 @@
                     </div>
                     <div>
                         <label class="reg-label">فصيلة الدم</label>
-                        <select wire:model.live="beneficiaryBloodType" class="reg-select">
+                        <select wire:model.live="beneficiaryBloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryBloodType')])>
                             @foreach (\App\Enums\BloodType::cases() as $blood)
                                 <option value="{{ $blood->value }}">{{ $blood->label() }}</option>
                             @endforeach
                         </select>
+                        @error('beneficiaryBloodType') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div class="reg-grid-2">
                     <div>
                         <label class="reg-label">الرقم الوطني <span class="reg-required">*</span></label>
-                        <input wire:model.blur="beneficiaryNationalId" type="text" inputmode="numeric" maxlength="12" class="reg-input" placeholder="120020129499" dir="ltr">
+                        <input
+                            wire:model.blur="beneficiaryNationalId"
+                            type="text"
+                            inputmode="numeric"
+                            maxlength="12"
+                            @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryNationalId')])
+                            placeholder="120020129499"
+                            dir="ltr"
+                        >
                         <p class="mt-1 text-xs text-slate-400">12 رقماً — يبدأ بـ 1 للذكر أو 2 للأنثى</p>
                         @error('beneficiaryNationalId') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
-                        <input wire:model.blur="beneficiaryDateOfBirth" type="date" class="reg-input">
+                        <input
+                            wire:model.blur="beneficiaryDateOfBirth"
+                            type="date"
+                            @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryDateOfBirth')])
+                        >
                         @error('beneficiaryDateOfBirth') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -184,6 +197,8 @@
                         @endforeach
                     </div>
                 </div>
+
+                @include('livewire.registration.partials.validation-summary', ['compact' => true])
 
                 <button
                     wire:click="saveBeneficiary"

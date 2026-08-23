@@ -564,7 +564,9 @@ class MedicalRegistrationForm extends Component
         $registration = $this->registration();
 
         if (! $registration) {
-            return;
+            throw ValidationException::withMessages([
+                'beneficiaryName' => 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.',
+            ]);
         }
 
         $photoPath = $this->beneficiaryExistingPhotoPath;
@@ -722,6 +724,8 @@ class MedicalRegistrationForm extends Component
         $registration = $this->registration();
 
         if (! $registration) {
+            $this->addError('employeePhoto', 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.');
+
             return;
         }
 
@@ -791,10 +795,13 @@ class MedicalRegistrationForm extends Component
 
         $registration = $this->registration();
 
-        if (
-            ! $registration
-            || (! $registration->employee_photo_path && ! $this->hasEmployeePhoto)
-        ) {
+        if (! $registration) {
+            $this->addError('submit', 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.');
+
+            return;
+        }
+
+        if (! $registration->employee_photo_path && ! $this->hasEmployeePhoto) {
             $this->addError('submit', 'يرجى إرفاق الصورة الشخصية قبل الإرسال');
 
             return;
