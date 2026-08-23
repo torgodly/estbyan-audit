@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Settings\RegistrationSettings;
 use App\Support\LibyanNationalId;
+use App\Support\LibyanPhoneNumber;
 use App\Support\RegistrationDocuments;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -176,13 +177,13 @@ it('strips digits from address and letters from phone while typing', function ()
         ->call('verifyIdentity')
         ->set('address', 'حي الأندلس 12')
         ->assertSet('address', 'حي الأندلس ')
-        ->set('phone', '09ab345678')
-        ->assertSet('phone', '09345678')
-        ->set('whatsapp', '09xx111')
-        ->assertSet('whatsapp', '09111');
+        ->set('phone', '09ab34567891')
+        ->assertSet('phone', '0934567891')
+        ->set('whatsapp', '09xx1112222')
+        ->assertSet('whatsapp', '091112222');
 });
 
-it('rejects address numbers and phone letters when saving', function () {
+it('rejects address numbers and invalid libyan phone prefixes', function () {
     Employee::factory()->create([
         'employee_number' => '2103',
         'national_id' => '119800507151',
@@ -200,11 +201,54 @@ it('rejects address numbers and phone letters when saving', function () {
         ->set('city', 'tripoli');
 
     $component->instance()->address = 'حي الأندلس 12';
-    $component->instance()->phone = '09ab345678';
+    $component->instance()->phone = '0951234567';
 
     $component
         ->call('saveEmployeeDetails')
         ->assertHasErrors(['address', 'phone']);
+});
+
+it('accepts valid libyan mobiles starting with 091 to 094', function () {
+    expect(LibyanPhoneNumber::isValid('0912345678'))->toBeTrue()
+        ->and(LibyanPhoneNumber::isValid('0922345678'))->toBeTrue()
+        ->and(LibyanPhoneNumber::isValid('0932345678'))->toBeTrue()
+        ->and(LibyanPhoneNumber::isValid('0942345678'))->toBeTrue()
+        ->and(LibyanPhoneNumber::isValid('0952345678'))->toBeFalse()
+        ->and(LibyanPhoneNumber::isValid('091234567'))->toBeFalse()
+        ->and(LibyanPhoneNumber::isValid('09123456789'))->toBeFalse();
+});
+
+it('rejects beneficiary names that contain numbers', function () {
+    Storage::fake(RegistrationDocuments::diskName());
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1977);
+    $beneficiaryNationalId = LibyanNationalId::generate(Gender::Female, 1985);
+
+    Employee::factory()->create([
+        'employee_number' => '2104',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'حسن علي',
+        'workplace' => 'hr_general',
+    ]);
+
+    $component = Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '2104')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('maritalStatus', 'married')
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryNationalId', $beneficiaryNationalId)
+        ->set('beneficiaryDateOfBirth', '1985-01-01')
+        ->set('beneficiaryBloodType', 'a_positive')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('spouse.jpg'));
+
+    $component->instance()->beneficiaryName = 'منى 2 علي';
+
+    $component
+        ->call('saveBeneficiary')
+        ->assertHasErrors(['beneficiaryName']);
 });
 
 it('persists step one draft in session and restores on remount', function () {

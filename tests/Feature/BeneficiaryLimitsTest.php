@@ -79,12 +79,14 @@ it('allows four spouses but rejects a fifth', function () {
         ->call('verifyIdentity')
         ->set('maritalStatus', 'married');
 
+    $spouseLabels = ['زوجة أولى', 'زوجة ثانية', 'زوجة ثالثة', 'زوجة رابعة'];
+
     for ($i = 1; $i <= 4; $i++) {
         $spouseId = LibyanNationalId::generate(Gender::Female, 1980 + $i);
 
         $component
             ->set('showBeneficiaryForm', true)
-            ->set('beneficiaryName', "زوجة {$i}")
+            ->set('beneficiaryName', $spouseLabels[$i - 1])
             ->set('beneficiaryRelationship', 'spouse')
             ->set('beneficiaryNationalId', $spouseId)
             ->set('beneficiaryDateOfBirth', (1980 + $i).'-06-15')
@@ -100,7 +102,7 @@ it('allows four spouses but rejects a fifth', function () {
 
     $component
         ->set('showBeneficiaryForm', true)
-        ->set('beneficiaryName', 'زوجة 5')
+        ->set('beneficiaryName', 'زوجة خامسة')
         ->set('beneficiaryRelationship', 'spouse')
         ->set('beneficiaryNationalId', $fifthSpouseId)
         ->set('beneficiaryDateOfBirth', '1990-01-01')

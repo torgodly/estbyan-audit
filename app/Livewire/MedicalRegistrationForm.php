@@ -12,6 +12,8 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Rules\LibyanNationalId;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
+use App\Support\LibyanPhoneNumber;
+use App\Support\PersonName;
 use App\Support\RegistrationDocuments;
 use App\Support\RegistrationUploads;
 use App\Support\WorkplaceOptions;
@@ -384,11 +386,11 @@ class MedicalRegistrationForm extends Component
             'workplace' => ['required', Rule::in(array_keys(WorkplaceOptions::options($this->workplace)))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
-            'phone' => ['required', 'string', 'min:9', 'max:15', 'regex:/^\+?[0-9]+$/'],
-            'whatsapp' => ['nullable', 'string', 'max:15', 'regex:/^\+?[0-9]*$/'],
+            'phone' => ['required', 'string', 'size:10', LibyanPhoneNumber::RULE],
+            'whatsapp' => ['nullable', 'string', 'size:10', LibyanPhoneNumber::RULE],
             'email' => ['nullable', 'email', 'max:255'],
             'city' => ['required', Rule::in(array_keys(config('registration.cities')))],
-            'address' => ['required', 'string', 'max:500', 'regex:/^[^0-9٠-٩]+$/u'],
+            'address' => ['required', 'string', 'max:500', PersonName::RULE],
         ], [
             'dateOfBirth.required' => 'تاريخ الميلاد مطلوب',
             'dateOfBirth.date' => 'صيغة تاريخ الميلاد غير صحيحة',
@@ -400,11 +402,10 @@ class MedicalRegistrationForm extends Component
             'maritalStatus.required' => 'الحالة الاجتماعية مطلوبة',
             'maritalStatus.in' => 'الحالة الاجتماعية المحددة غير صالحة',
             'phone.required' => 'رقم الهاتف مطلوب',
-            'phone.min' => 'رقم الهاتف قصير جداً (9 أرقام على الأقل)',
-            'phone.max' => 'رقم الهاتف طويل جداً',
-            'phone.regex' => 'رقم الهاتف يجب أن يحتوي على أرقام فقط',
-            'whatsapp.max' => 'رقم الواتساب طويل جداً',
-            'whatsapp.regex' => 'رقم الواتساب يجب أن يحتوي على أرقام فقط',
+            'phone.size' => 'رقم الهاتف يجب أن يتكون من 10 أرقام',
+            'phone.regex' => LibyanPhoneNumber::invalidMessage('رقم الهاتف'),
+            'whatsapp.size' => 'رقم الواتساب يجب أن يتكون من 10 أرقام',
+            'whatsapp.regex' => LibyanPhoneNumber::invalidMessage('رقم الواتساب'),
             'email.email' => 'صيغة البريد الإلكتروني غير صحيحة',
             'email.max' => 'البريد الإلكتروني طويل جداً',
             'city.required' => 'المدينة مطلوبة',
@@ -421,27 +422,22 @@ class MedicalRegistrationForm extends Component
 
     public function updatedPhone(mixed $value): void
     {
-        $this->phone = $this->digitsOnlyPhone((string) $value);
+        $this->phone = LibyanPhoneNumber::sanitize((string) $value);
     }
 
     public function updatedWhatsapp(mixed $value): void
     {
-        $this->whatsapp = $this->digitsOnlyPhone((string) $value);
+        $this->whatsapp = LibyanPhoneNumber::sanitize((string) $value);
     }
 
     public function updatedAddress(mixed $value): void
     {
-        $this->address = $this->addressWithoutDigits((string) $value);
+        $this->address = PersonName::sanitize((string) $value);
     }
 
-    protected function digitsOnlyPhone(string $value): string
+    public function updatedBeneficiaryName(mixed $value): void
     {
-        return preg_replace('/[^0-9+]/', '', $value) ?? '';
-    }
-
-    protected function addressWithoutDigits(string $value): string
-    {
-        return preg_replace('/[0-9٠-٩]/u', '', $value) ?? '';
+        $this->beneficiaryName = PersonName::sanitize((string) $value);
     }
 
     public function saveMedicalRecord(): void
@@ -483,7 +479,7 @@ class MedicalRegistrationForm extends Component
         }
 
         $rules = [
-            'beneficiaryName' => ['required', 'string', 'max:255'],
+            'beneficiaryName' => ['required', 'string', 'max:255', PersonName::RULE],
             'beneficiaryRelationship' => [
                 'required',
                 Rule::in(array_map(
@@ -521,6 +517,7 @@ class MedicalRegistrationForm extends Component
         $this->validateRules($rules, [
             'beneficiaryName.required' => 'اسم المستفيد مطلوب',
             'beneficiaryName.max' => 'اسم المستفيد طويل جداً',
+            'beneficiaryName.regex' => PersonName::invalidMessage('اسم المستفيد'),
             'beneficiaryRelationship.required' => 'صلة القرابة مطلوبة',
             'beneficiaryRelationship.in' => $this->maritalStatus === MaritalStatus::Single->value
                 ? 'الأعزب يمكنه إضافة الوالدين فقط، وبحد أقصى أب واحد وأم واحدة'

@@ -86,12 +86,14 @@
                         wire:model.blur="phone"
                         type="tel"
                         inputmode="numeric"
-                        pattern="[0-9+]*"
+                        maxlength="10"
+                        pattern="09[1-4][0-9]{7}"
                         class="reg-input"
-                        placeholder="09XXXXXXXX"
+                        placeholder="091XXXXXXX"
                         dir="ltr"
-                        x-on:input="$el.value = $el.value.replace(/[^0-9+]/g, '')"
+                        x-on:input="$el.value = $el.value.replace(/\D+/g, '').slice(0, 10)"
                     >
+                    <p class="mt-1 text-xs text-slate-400">{{ \App\Support\LibyanPhoneNumber::HINT }}</p>
                     @error('phone') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
@@ -100,11 +102,14 @@
                         wire:model.blur="whatsapp"
                         type="tel"
                         inputmode="numeric"
-                        pattern="[0-9+]*"
+                        maxlength="10"
+                        pattern="09[1-4][0-9]{7}"
                         class="reg-input"
+                        placeholder="091XXXXXXX"
                         dir="ltr"
-                        x-on:input="$el.value = $el.value.replace(/[^0-9+]/g, '')"
+                        x-on:input="$el.value = $el.value.replace(/\D+/g, '').slice(0, 10)"
                     >
+                    <p class="mt-1 text-xs text-slate-400">اختياري — نفس صيغة رقم الهاتف</p>
                     @error('whatsapp') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
             </div>

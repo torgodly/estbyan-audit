@@ -5,6 +5,8 @@ namespace App\Filament\Resources\MedicalRegistrations\Schemas;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
+use App\Support\LibyanPhoneNumber;
+use App\Support\PersonName;
 use App\Support\RegistrationDocuments;
 use App\Support\RegistrationUploads;
 use Filament\Forms\Components\CheckboxList;
@@ -25,7 +27,13 @@ class MedicalRegistrationForm
                 Section::make('الهوية')
                     ->columns(2)
                     ->schema([
-                        TextInput::make('full_name')->label('الاسم')->required(),
+                        TextInput::make('full_name')
+                            ->label('الاسم')
+                            ->required()
+                            ->rule(PersonName::RULE)
+                            ->validationMessages([
+                                'regex' => PersonName::invalidMessage('الاسم'),
+                            ]),
                         TextInput::make('employee_number')
                             ->label('الرقم التأميني')
                             ->required()
@@ -93,16 +101,20 @@ class MedicalRegistrationForm
                         TextInput::make('phone')
                             ->label('الهاتف')
                             ->tel()
-                            ->rule('regex:/^\+?[0-9]+$/')
+                            ->rules(['required', 'size:10', LibyanPhoneNumber::RULE])
+                            ->helperText(LibyanPhoneNumber::HINT)
                             ->validationMessages([
-                                'regex' => 'رقم الهاتف يجب أن يحتوي على أرقام فقط',
+                                'regex' => LibyanPhoneNumber::invalidMessage('رقم الهاتف'),
+                                'size' => 'رقم الهاتف يجب أن يتكون من 10 أرقام',
                             ]),
                         TextInput::make('whatsapp')
                             ->label('واتساب')
                             ->tel()
-                            ->rule('regex:/^\+?[0-9]*$/')
+                            ->rules(['nullable', 'size:10', LibyanPhoneNumber::RULE])
+                            ->helperText(LibyanPhoneNumber::HINT)
                             ->validationMessages([
-                                'regex' => 'رقم الواتساب يجب أن يحتوي على أرقام فقط',
+                                'regex' => LibyanPhoneNumber::invalidMessage('رقم الواتساب'),
+                                'size' => 'رقم الواتساب يجب أن يتكون من 10 أرقام',
                             ]),
                         TextInput::make('email')->label('البريد')->email(),
                         Select::make('city')->label('المدينة')->options(config('registration.cities')),

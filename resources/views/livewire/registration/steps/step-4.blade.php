@@ -45,7 +45,13 @@
             <div class="space-y-4">
                 <div>
                     <label class="reg-label">الاسم الكامل <span class="reg-required">*</span></label>
-                    <input wire:model.blur="beneficiaryName" type="text" class="reg-input">
+                    <input
+                        wire:model.blur="beneficiaryName"
+                        type="text"
+                        class="reg-input"
+                        x-on:input="$el.value = $el.value.replace(/[0-9٠-٩]/g, '')"
+                    >
+                    <p class="mt-1 text-xs text-slate-400">{{ \App\Support\PersonName::HINT }}</p>
                     @error('beneficiaryName') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div class="reg-grid-2">

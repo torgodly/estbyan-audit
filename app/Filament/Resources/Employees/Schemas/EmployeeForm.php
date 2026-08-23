@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Schemas;
 
+use App\Support\PersonName;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -20,7 +21,11 @@ class EmployeeForm
                         TextInput::make('full_name')
                             ->label('الاسم الكامل')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->rule(PersonName::RULE)
+                            ->validationMessages([
+                                'regex' => PersonName::invalidMessage('الاسم الكامل'),
+                            ]),
                         TextInput::make('employee_number')
                             ->label('الرقم التأميني')
                             ->required()
