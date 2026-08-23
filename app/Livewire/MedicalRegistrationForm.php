@@ -13,6 +13,7 @@ use App\Models\MedicalRegistration;
 use App\Rules\LibyanNationalId;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\RegistrationDocuments;
+use App\Support\RegistrationUploads;
 use App\Support\WorkplaceOptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -489,9 +490,10 @@ class MedicalRegistrationForm extends Component
             'beneficiaryPhoto' => [
                 Rule::requiredIf($this->editingBeneficiaryIndex === null && blank($this->beneficiaryExistingPhotoPath)),
                 'nullable',
+                'file',
                 'image',
-                'mimes:jpg,jpeg,png',
-                'max:10240',
+                'mimes:'.RegistrationUploads::ACCEPTED_EXTENSIONS,
+                'max:'.RegistrationUploads::MAX_KILOBYTES,
             ],
         ];
 
@@ -510,8 +512,9 @@ class MedicalRegistrationForm extends Component
             'beneficiaryBloodType.in' => 'فصيلة الدم المحددة غير صالحة',
             'beneficiaryPhoto.required' => 'صورة المستفيد مطلوبة',
             'beneficiaryPhoto.image' => 'يجب أن يكون الملف صورة',
-            'beneficiaryPhoto.mimes' => 'صورة المستفيد يجب أن تكون بصيغة JPG أو PNG',
-            'beneficiaryPhoto.max' => 'حجم صورة المستفيد يجب ألا يتجاوز 10 ميجابايت',
+            'beneficiaryPhoto.file' => 'يجب اختيار ملف صورة صالح',
+            'beneficiaryPhoto.mimes' => RegistrationUploads::invalidTypeMessage('صورة المستفيد'),
+            'beneficiaryPhoto.max' => RegistrationUploads::tooLargeMessage('صورة المستفيد'),
             'beneficiaryChronicConditions.required' => 'يرجى تحديد مرض مزمن واحد على الأقل للمستفيد',
             'beneficiaryChronicConditions.array' => 'قائمة الأمراض المزمنة للمستفيد غير صالحة',
             'beneficiaryChronicConditions.*.in' => 'أحد الأمراض المزمنة المحددة للمستفيد غير صالح',
@@ -677,14 +680,15 @@ class MedicalRegistrationForm extends Component
         $rules = [];
 
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
-            $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:10240'];
+            $rules['employeePhoto'] = RegistrationUploads::imageRules();
         }
 
         $this->validateRules($rules, [
             'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
             'employeePhoto.file' => 'يجب اختيار ملف صورة صالح',
-            'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
-            'employeePhoto.max' => 'حجم صورة الموظف يجب ألا يتجاوز 10 ميجابايت',
+            'employeePhoto.image' => 'يجب أن يكون الملف صورة',
+            'employeePhoto.mimes' => RegistrationUploads::invalidTypeMessage('صورة الموظف'),
+            'employeePhoto.max' => RegistrationUploads::tooLargeMessage('صورة الموظف'),
         ]);
 
         $path = "registrations/{$registration->uuid}";
@@ -1285,16 +1289,101 @@ class MedicalRegistrationForm extends Component
             'min.array' => 'حقل :attribute يجب أن يحتوي على :min عناصر على الأقل',
             'max.numeric' => 'حقل :attribute يجب ألا يزيد عن :max',
             'max.string' => 'حقل :attribute طويل جداً (الحد الأقصى :max أحرف)',
-            'max.file' => 'حجم :attribute يجب ألا يتجاوز :max كيلوبايت',
+            'max.file' => 'حجم :attribute يجب ألا يتجاوز '.RegistrationUploads::maxSizeLabel(),
             'max.array' => 'حقل :attribute يجب ألا يحتوي على أكثر من :max عناصر',
             'in' => 'القيمة المحددة في :attribute غير صالحة',
             'accepted' => 'يجب الموافقة على :attribute',
             'image' => 'حقل :attribute يجب أن يكون صورة',
             'mimes' => 'حقل :attribute يجب أن يكون ملفاً من نوع: :values',
             'file' => 'حقل :attribute يجب أن يكون ملفاً',
+            'uploaded' => 'فشل رفع :attribute. تأكد من نوع الملف وحجمه ثم أعد المحاولة.',
             'array' => 'حقل :attribute يجب أن يكون قائمة',
             'nullable' => '',
         ];
+    }
+
+    /**
+     * Livewire temporary-upload failures — translate to clear Arabic reasons.
+     */
+    public function _uploadErrored($name, $errorsInJson, $isMultiple): void
+    {
+        $this->dispatch('upload:errored', name: $name)->self();
+
+        $label = match ($name) {
+            'employeePhoto' => 'الصورة الشخصية للموظف',
+            'beneficiaryPhoto' => 'صورة المستفيد',
+            default => is_string($name) ? $name : 'الملف',
+        };
+
+        if (! is_null($errorsInJson)) {
+            $errorsInJson = $isMultiple
+                ? str_ireplace('files', $name, $errorsInJson)
+                : str_ireplace('files.0', $name, $errorsInJson);
+
+            $errors = json_decode($errorsInJson, true)['errors'] ?? null;
+
+            if (is_array($errors) && $errors !== []) {
+                $messages = [];
+
+                foreach ($errors as $field => $fieldMessages) {
+                    $messages[$field] = collect($fieldMessages)
+                        ->map(fn (string $message): string => $this->friendlyUploadError($message, $label))
+                        ->all();
+                }
+
+                throw ValidationException::withMessages($messages);
+            }
+        }
+
+        throw ValidationException::withMessages([
+            $name => RegistrationUploads::failedMessage($label),
+        ]);
+    }
+
+    /**
+     * Client-side size/type rejection before Livewire starts the upload.
+     */
+    public function reportUploadClientError(string $field, string $reason): void
+    {
+        $allowed = ['employeePhoto', 'beneficiaryPhoto'];
+
+        if (! in_array($field, $allowed, true)) {
+            return;
+        }
+
+        $this->reset($field);
+        $this->addError($field, $reason);
+    }
+
+    protected function friendlyUploadError(string $message, string $label): string
+    {
+        $normalized = mb_strtolower($message);
+
+        if (
+            str_contains($normalized, 'kilobyte')
+            || str_contains($normalized, 'may not be greater')
+            || str_contains($normalized, 'must not be greater')
+            || str_contains($message, 'ميجابايت')
+            || str_contains($normalized, 'too large')
+        ) {
+            return RegistrationUploads::tooLargeMessage($label);
+        }
+
+        if (
+            str_contains($normalized, 'mime')
+            || str_contains($normalized, 'image')
+            || str_contains($normalized, 'type')
+            || str_contains($message, 'JPG')
+            || str_contains($message, 'png')
+        ) {
+            return RegistrationUploads::invalidTypeMessage($label);
+        }
+
+        if (str_contains($normalized, 'required') || str_contains($message, 'مطلوب')) {
+            return "{$label} مطلوبة";
+        }
+
+        return RegistrationUploads::failedMessage($label);
     }
 
     /**

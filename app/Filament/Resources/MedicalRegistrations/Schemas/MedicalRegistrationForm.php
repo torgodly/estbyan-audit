@@ -6,6 +6,7 @@ use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
 use App\Support\RegistrationDocuments;
+use App\Support\RegistrationUploads;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -111,6 +112,9 @@ class MedicalRegistrationForm
                             ->directory('registrations')
                             ->visibility('private')
                             ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png'])
+                            ->maxSize(RegistrationUploads::MAX_KILOBYTES)
+                            ->helperText('JPG أو PNG — الحد الأقصى 10 ميجابايت')
                             ->downloadable()
                             ->openable(),
                     ]),

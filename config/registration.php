@@ -132,6 +132,18 @@ return [
         'wadi_al_hayat' => 'وادي الاجال',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Upload limits
+    |--------------------------------------------------------------------------
+    |
+    | Max image size for registration photos (employee + beneficiaries).
+    | Value is in kilobytes. Keep in sync with config/livewire.php
+    | temporary_file_upload.rules max value.
+    |
+    */
+    'max_upload_kilobytes' => 10240,
+
     'chronic_conditions' => [
         'diabetes' => 'السكري',
         'hypertension' => 'ارتفاع ضغط الدم',
