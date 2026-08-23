@@ -69,9 +69,11 @@ class MedicalRegistrationForm
                             ->label('مكان العمل')
                             ->options(config('registration.workplaces'))
                             ->searchable(),
-                        Select::make('job_title')
+                        TextInput::make('job_title')
                             ->label('الصفة')
-                            ->options(config('registration.job_titles')),
+                            ->formatStateUsing(fn (?string $state): string => 'موظف')
+                            ->dehydrateStateUsing(fn (): string => 'employee')
+                            ->disabled(),
                         Select::make('gender')
                             ->label('الجنس')
                             ->options(collect(Gender::cases())->mapWithKeys(

@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Livewire\Features\SupportFileUploads\FileNotPreviewableException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,4 +22,22 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Never 500 the registration form over a bad Livewire temp preview.
+        $exceptions->renderable(function (
+            FileNotPreviewableException $e,
+            Request $request,
+        ) {
+            report($e);
+
+            if ($request->hasHeader('X-Livewire')) {
+                return response()->json([
+                    'message' => 'تعذر عرض الصورة. أعد رفع ملف JPG أو PNG.',
+                ], 422);
+            }
+
+            return redirect()
+                ->back()
+                ->with('error', 'تعذر عرض الصورة. أعد رفع ملف JPG أو PNG.');
+        });
     })->create();

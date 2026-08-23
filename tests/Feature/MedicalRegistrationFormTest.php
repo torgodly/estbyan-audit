@@ -125,7 +125,7 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->assertSet('employeeNumber', '2001')
         ->assertSet('verifiedFullName', 'أحمد محمد')
         ->assertSet('workplace', '')
-        ->assertSet('jobTitle', '')
+        ->assertSet('jobTitle', 'employee')
         ->assertSet('gender', 'male')
         ->assertSet('identityLocked', true);
 
@@ -135,11 +135,11 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->and($registration->employee_id)->toBe($employee->id)
         ->and($registration->full_name)->toBe('أحمد محمد')
         ->and($registration->workplace)->toBeNull()
-        ->and($registration->job_title)->toBeNull()
+        ->and($registration->job_title)->toBe('employee')
         ->and($registration->gender)->toBe(Gender::Male);
 });
 
-it('requires workplace and job title before continuing from employee details', function () {
+it('requires workplace before continuing from employee details', function () {
     Employee::factory()->create([
         'employee_number' => '2101',
         'national_id' => '119800507149',
@@ -157,7 +157,8 @@ it('requires workplace and job title before continuing from employee details', f
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
         ->call('saveEmployeeDetails')
-        ->assertHasErrors(['workplace', 'jobTitle']);
+        ->assertHasErrors(['workplace'])
+        ->assertHasNoErrors(['jobTitle']);
 });
 
 it('persists step one draft in session and restores on remount', function () {
@@ -876,12 +877,12 @@ it('opens documents while editing without crashing on a non-previewable temp upl
     $component
         ->call('continueFromBeneficiaries')
         ->assertSet('step', 5)
-        ->assertSet('employeePhoto', null)
         ->assertSet('hasEmployeePhoto', true)
         ->assertSee('إرفاق المستندات')
         ->assertSee('محفوظة');
 
-    expect($component->instance()->temporaryUploadPreviewUrl($staleUpload))->toBeNull();
+    expect($component->instance()->temporaryUploadPreviewUrl($staleUpload))->toBeNull()
+        ->and($component->instance()->employeeSavedPhotoUrl())->not->toBeNull();
 });
 
 it('downloads a reference card for the session registration', function () {

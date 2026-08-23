@@ -25,10 +25,16 @@ class MedicalRegistrationsTable
                     ->label('الصورة')
                     ->circular()
                     ->imageSize(40)
-                    ->getStateUsing(fn (MedicalRegistration $record): ?string => RegistrationDocuments::url(
-                        $record,
-                        RegistrationDocuments::EMPLOYEE_PHOTO,
-                    ))
+                    ->getStateUsing(function (MedicalRegistration $record): ?string {
+                        try {
+                            return RegistrationDocuments::url(
+                                $record,
+                                RegistrationDocuments::EMPLOYEE_PHOTO,
+                            );
+                        } catch (\Throwable) {
+                            return null;
+                        }
+                    })
                     ->defaultImageUrl(url('/images/brand/audit-bureau.png')),
                 TextColumn::make('reference_number')
                     ->label('رقم المرجع')

@@ -32,14 +32,10 @@
                 @error('workplace') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="reg-label">الصفة <span class="reg-required">*</span></label>
-                <select wire:model.live="jobTitle" class="reg-select">
-                    <option value="">— اختر —</option>
-                    @foreach ($jobTitles as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-                @error('jobTitle') <p class="reg-field-error">{{ $message }}</p> @enderror
+                <label class="reg-label">الصفة</label>
+                <div class="reg-input flex items-center bg-slate-50 font-bold text-slate-800">
+                    موظف
+                </div>
             </div>
         </div>
 

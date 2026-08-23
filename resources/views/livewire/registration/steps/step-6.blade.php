@@ -1,10 +1,7 @@
 @php
     $genderLabel = \App\Enums\Gender::tryFrom($gender)?->label() ?? '—';
     $maritalLabel = \App\Enums\MaritalStatus::tryFrom($maritalStatus)?->label() ?? '—';
-    $registration = $this->registration();
-    $employeePhotoUrl = $registration
-        ? \App\Support\RegistrationDocuments::url($registration, \App\Support\RegistrationDocuments::EMPLOYEE_PHOTO)
-        : null;
+    $employeePhotoUrl = $this->employeeSavedPhotoUrl();
 @endphp
 
 <section class="space-y-5">

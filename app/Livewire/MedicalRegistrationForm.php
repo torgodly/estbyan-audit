@@ -48,7 +48,7 @@ class MedicalRegistrationForm extends Component
 
     public string $workplace = '';
 
-    public string $jobTitle = '';
+    public string $jobTitle = 'employee';
 
     public string $gender = 'male';
 
@@ -338,7 +338,7 @@ class MedicalRegistrationForm extends Component
             'national_id' => $employee->national_id,
             'full_name' => $employee->full_name,
             'workplace' => null,
-            'job_title' => null,
+            'job_title' => 'employee',
             'gender' => $genderFromNid,
             'status' => RegistrationStatus::Draft,
             'consent_at' => now(),
@@ -382,7 +382,6 @@ class MedicalRegistrationForm extends Component
                 },
             ],
             'workplace' => ['required', Rule::in(array_keys(WorkplaceOptions::options($this->workplace)))],
-            'jobTitle' => ['required', Rule::in(array_keys(config('registration.job_titles')))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
             'phone' => ['required', 'string', 'min:9', 'max:15'],
@@ -396,8 +395,6 @@ class MedicalRegistrationForm extends Component
             'dateOfBirth.before' => 'تاريخ الميلاد يجب أن يكون قبل اليوم',
             'workplace.required' => 'مكان العمل مطلوب',
             'workplace.in' => 'مكان العمل المحدد غير صالح',
-            'jobTitle.required' => 'الصفة مطلوبة',
-            'jobTitle.in' => 'الصفة المحددة غير صالحة',
             'gender.required' => 'الجنس مطلوب',
             'gender.in' => 'قيمة الجنس غير صالحة',
             'maritalStatus.required' => 'الحالة الاجتماعية مطلوبة',
@@ -414,6 +411,7 @@ class MedicalRegistrationForm extends Component
             'address.max' => 'العنوان السكني طويل جداً (الحد الأقصى 500 حرف)',
         ]);
 
+        $this->jobTitle = 'employee';
         $this->autoPersistToDatabase();
         $this->goToStep(3);
     }
@@ -547,10 +545,18 @@ class MedicalRegistrationForm extends Component
         $photoPath = $this->beneficiaryExistingPhotoPath;
 
         if ($this->beneficiaryPhoto instanceof TemporaryUploadedFile) {
-            $photoPath = $this->beneficiaryPhoto->store(
+            $stored = $this->storeTemporaryUpload(
+                $this->beneficiaryPhoto,
                 "registrations/{$registration->uuid}/beneficiaries",
-                RegistrationDocuments::diskName(),
             );
+
+            if (blank($stored)) {
+                throw ValidationException::withMessages([
+                    'beneficiaryPhoto' => RegistrationUploads::failedMessage('صورة المستفيد'),
+                ]);
+            }
+
+            $photoPath = $stored;
         }
 
         if (blank($photoPath)) {
@@ -710,11 +716,17 @@ class MedicalRegistrationForm extends Component
 
         $path = "registrations/{$registration->uuid}";
 
-        if ($this->employeePhoto) {
-            $registration->employee_photo_path = $this->employeePhoto->store(
-                $path,
-                RegistrationDocuments::diskName(),
-            );
+        if ($this->employeePhoto instanceof TemporaryUploadedFile) {
+            $stored = $this->storeTemporaryUpload($this->employeePhoto, $path);
+
+            if (blank($stored)) {
+                $this->addError('employeePhoto', RegistrationUploads::failedMessage('صورة الموظف'));
+
+                return;
+            }
+
+            $registration->employee_photo_path = $stored;
+            $this->employeePhoto = null;
         }
 
         if (blank($registration->employee_photo_path)) {
@@ -847,7 +859,7 @@ class MedicalRegistrationForm extends Component
 
     public function render()
     {
-        $this->discardUnpreviewableUploads();
+        $this->discardBrokenTemporaryUploads();
 
         return view('livewire.medical-registration-form', [
             'workplaces' => WorkplaceOptions::options($this->workplace),
@@ -866,8 +878,13 @@ class MedicalRegistrationForm extends Component
         ]);
     }
 
+    public function hydrate(): void
+    {
+        $this->discardBrokenTemporaryUploads();
+    }
+
     /**
-     * Safe Livewire temp-upload preview URL. Never throws FileNotPreviewableException.
+     * Safe Livewire temp-upload preview URL. Never throws.
      */
     public function temporaryUploadPreviewUrl(mixed $file): ?string
     {
@@ -876,7 +893,7 @@ class MedicalRegistrationForm extends Component
         }
 
         try {
-            if (! $file->isPreviewable()) {
+            if (! $file->exists() || ! $file->isPreviewable()) {
                 return null;
             }
 
@@ -887,34 +904,85 @@ class MedicalRegistrationForm extends Component
     }
 
     /**
-     * Drop stale/broken temp uploads (e.g. empty extension from mobile cameras)
-     * so step 5 can fall back to the already-saved employee photo while editing.
+     * Safe URL for a saved employee photo. Never throws.
      */
-    protected function discardUnpreviewableUploads(): void
+    public function employeeSavedPhotoUrl(): ?string
     {
-        if (
-            $this->employeePhoto instanceof TemporaryUploadedFile
-            && ! $this->employeePhoto->isPreviewable()
-        ) {
-            $this->employeePhoto = null;
-        }
+        try {
+            $registration = $this->registration();
 
-        if (
-            $this->beneficiaryPhoto instanceof TemporaryUploadedFile
-            && ! $this->beneficiaryPhoto->isPreviewable()
-        ) {
-            $this->beneficiaryPhoto = null;
+            if (! $registration || blank($registration->employee_photo_path)) {
+                return null;
+            }
+
+            if (! RegistrationDocuments::disk()->exists($registration->employee_photo_path)) {
+                return null;
+            }
+
+            return RegistrationDocuments::url(
+                $registration,
+                RegistrationDocuments::EMPLOYEE_PHOTO,
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Drop missing/corrupt Livewire temp uploads so the UI never crashes on preview.
+     * Unpreviewable-but-existing files are kept for storage; views just skip preview.
+     */
+    protected function discardBrokenTemporaryUploads(): void
+    {
+        foreach (['employeePhoto', 'beneficiaryPhoto'] as $property) {
+            $file = $this->{$property};
+
+            if ($file === null) {
+                continue;
+            }
+
+            if (! $file instanceof TemporaryUploadedFile) {
+                $this->{$property} = null;
+
+                continue;
+            }
+
+            try {
+                if (! $file->exists()) {
+                    $this->{$property} = null;
+                }
+            } catch (\Throwable) {
+                $this->{$property} = null;
+            }
+        }
+    }
+
+    protected function storeTemporaryUpload(TemporaryUploadedFile $file, string $directory): ?string
+    {
+        try {
+            $path = $file->store($directory, RegistrationDocuments::diskName());
+
+            return filled($path) ? $path : null;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return null;
         }
     }
 
     protected function goToStep(int $step): void
     {
+        $this->discardBrokenTemporaryUploads();
         $this->step = $step;
 
         if ($this->registrationId) {
-            MedicalRegistration::query()
-                ->whereKey($this->registrationId)
-                ->update(['current_step' => $step]);
+            try {
+                MedicalRegistration::query()
+                    ->whereKey($this->registrationId)
+                    ->update(['current_step' => $step]);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
     }
 
@@ -983,7 +1051,7 @@ class MedicalRegistrationForm extends Component
     protected function isAutoPersistField(string $property): bool
     {
         return in_array($property, [
-            'dateOfBirth', 'workplace', 'jobTitle', 'gender', 'maritalStatus',
+            'dateOfBirth', 'workplace', 'gender', 'maritalStatus',
             'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -1009,7 +1077,7 @@ class MedicalRegistrationForm extends Component
             'employee_number' => $this->employeeNumber ?: $registration->employee_number,
             'date_of_birth' => $this->dateOfBirth ?: null,
             'workplace' => $this->workplace ?: null,
-            'job_title' => $this->jobTitle ?: null,
+            'job_title' => 'employee',
             'gender' => $this->gender ?: null,
             'marital_status' => $this->maritalStatus ?: null,
             'beneficiaries_count' => count($this->beneficiaries),
@@ -1041,15 +1109,23 @@ class MedicalRegistrationForm extends Component
 
     public function beneficiaryPhotoUrl(?array $beneficiary): ?string
     {
-        $registration = $this->registration();
+        try {
+            $registration = $this->registration();
 
-        if (! $registration || blank($beneficiary['photo_path'] ?? null) || blank($beneficiary['id'] ?? null)) {
+            if (! $registration || blank($beneficiary['photo_path'] ?? null) || blank($beneficiary['id'] ?? null)) {
+                return null;
+            }
+
+            if (! RegistrationDocuments::disk()->exists($beneficiary['photo_path'])) {
+                return null;
+            }
+
+            $model = $registration->beneficiaries->firstWhere('id', $beneficiary['id']);
+
+            return $model ? RegistrationDocuments::beneficiaryUrl($registration, $model) : null;
+        } catch (\Throwable) {
             return null;
         }
-
-        $model = $registration->beneficiaries->firstWhere('id', $beneficiary['id']);
-
-        return $model ? RegistrationDocuments::beneficiaryUrl($registration, $model) : null;
     }
 
     protected function syncBeneficiariesToDatabase(): void
@@ -1119,7 +1195,7 @@ class MedicalRegistrationForm extends Component
         $this->fullName = $registration->full_name;
         $this->verifiedFullName = $registration->full_name;
         $this->workplace = WorkplaceOptions::sanitizeKey($registration->workplace) ?? '';
-        $this->jobTitle = $registration->job_title ?? '';
+        $this->jobTitle = 'employee';
         $this->gender = $registration->gender?->value ?? 'male';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
         $this->beneficiariesCount = (string) $registration->beneficiaries->count();
@@ -1206,7 +1282,7 @@ class MedicalRegistrationForm extends Component
         ]);
 
         $this->step = 1;
-        $this->jobTitle = '';
+        $this->jobTitle = 'employee';
         $this->gender = 'male';
         $this->maritalStatus = 'married';
         $this->beneficiaryRelationship = BeneficiaryRelationship::Spouse->value;
