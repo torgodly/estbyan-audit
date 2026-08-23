@@ -384,11 +384,11 @@ class MedicalRegistrationForm extends Component
             'workplace' => ['required', Rule::in(array_keys(WorkplaceOptions::options($this->workplace)))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
-            'phone' => ['required', 'string', 'min:9', 'max:15'],
-            'whatsapp' => ['nullable', 'string', 'max:15'],
+            'phone' => ['required', 'string', 'min:9', 'max:15', 'regex:/^\+?[0-9]+$/'],
+            'whatsapp' => ['nullable', 'string', 'max:15', 'regex:/^\+?[0-9]*$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'city' => ['required', Rule::in(array_keys(config('registration.cities')))],
-            'address' => ['required', 'string', 'max:500'],
+            'address' => ['required', 'string', 'max:500', 'regex:/^[^0-9٠-٩]+$/u'],
         ], [
             'dateOfBirth.required' => 'تاريخ الميلاد مطلوب',
             'dateOfBirth.date' => 'صيغة تاريخ الميلاد غير صحيحة',
@@ -402,18 +402,46 @@ class MedicalRegistrationForm extends Component
             'phone.required' => 'رقم الهاتف مطلوب',
             'phone.min' => 'رقم الهاتف قصير جداً (9 أرقام على الأقل)',
             'phone.max' => 'رقم الهاتف طويل جداً',
+            'phone.regex' => 'رقم الهاتف يجب أن يحتوي على أرقام فقط',
             'whatsapp.max' => 'رقم الواتساب طويل جداً',
+            'whatsapp.regex' => 'رقم الواتساب يجب أن يحتوي على أرقام فقط',
             'email.email' => 'صيغة البريد الإلكتروني غير صحيحة',
             'email.max' => 'البريد الإلكتروني طويل جداً',
             'city.required' => 'المدينة مطلوبة',
             'city.in' => 'المدينة المحددة غير صالحة',
             'address.required' => 'العنوان السكني مطلوب',
             'address.max' => 'العنوان السكني طويل جداً (الحد الأقصى 500 حرف)',
+            'address.regex' => 'العنوان السكني يجب ألا يحتوي على أرقام',
         ]);
 
         $this->jobTitle = 'employee';
         $this->autoPersistToDatabase();
         $this->goToStep(3);
+    }
+
+    public function updatedPhone(mixed $value): void
+    {
+        $this->phone = $this->digitsOnlyPhone((string) $value);
+    }
+
+    public function updatedWhatsapp(mixed $value): void
+    {
+        $this->whatsapp = $this->digitsOnlyPhone((string) $value);
+    }
+
+    public function updatedAddress(mixed $value): void
+    {
+        $this->address = $this->addressWithoutDigits((string) $value);
+    }
+
+    protected function digitsOnlyPhone(string $value): string
+    {
+        return preg_replace('/[^0-9+]/', '', $value) ?? '';
+    }
+
+    protected function addressWithoutDigits(string $value): string
+    {
+        return preg_replace('/[0-9٠-٩]/u', '', $value) ?? '';
     }
 
     public function saveMedicalRecord(): void

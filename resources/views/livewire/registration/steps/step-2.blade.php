@@ -82,12 +82,30 @@
             <div class="reg-grid-2">
                 <div>
                     <label class="reg-label">رقم الهاتف <span class="reg-required">*</span></label>
-                    <input wire:model.blur="phone" type="tel" inputmode="tel" class="reg-input" placeholder="09XXXXXXXX">
+                    <input
+                        wire:model.blur="phone"
+                        type="tel"
+                        inputmode="numeric"
+                        pattern="[0-9+]*"
+                        class="reg-input"
+                        placeholder="09XXXXXXXX"
+                        dir="ltr"
+                        x-on:input="$el.value = $el.value.replace(/[^0-9+]/g, '')"
+                    >
                     @error('phone') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="reg-label">واتساب</label>
-                    <input wire:model.blur="whatsapp" type="tel" inputmode="tel" class="reg-input">
+                    <input
+                        wire:model.blur="whatsapp"
+                        type="tel"
+                        inputmode="numeric"
+                        pattern="[0-9+]*"
+                        class="reg-input"
+                        dir="ltr"
+                        x-on:input="$el.value = $el.value.replace(/[^0-9+]/g, '')"
+                    >
+                    @error('whatsapp') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
             </div>
             <div>
@@ -107,7 +125,13 @@
                 </div>
                 <div>
                     <label class="reg-label">العنوان السكني <span class="reg-required">*</span></label>
-                    <input wire:model.blur="address" type="text" class="reg-input">
+                    <input
+                        wire:model.blur="address"
+                        type="text"
+                        class="reg-input"
+                        x-on:input="$el.value = $el.value.replace(/[0-9٠-٩]/g, '')"
+                    >
+                    <p class="mt-1 text-xs text-slate-400">بدون أرقام — مثال: حي الأندلس، شارع الجمهورية</p>
                     @error('address') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
             </div>

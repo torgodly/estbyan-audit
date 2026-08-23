@@ -161,6 +161,52 @@ it('requires workplace before continuing from employee details', function () {
         ->assertHasNoErrors(['jobTitle']);
 });
 
+it('strips digits from address and letters from phone while typing', function () {
+    Employee::factory()->create([
+        'employee_number' => '2102',
+        'national_id' => '119800507150',
+        'full_name' => 'سامي محمد',
+        'workplace' => 'hr_general',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '2102')
+        ->set('nationalId', '119800507150')
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('address', 'حي الأندلس 12')
+        ->assertSet('address', 'حي الأندلس ')
+        ->set('phone', '09ab345678')
+        ->assertSet('phone', '09345678')
+        ->set('whatsapp', '09xx111')
+        ->assertSet('whatsapp', '09111');
+});
+
+it('rejects address numbers and phone letters when saving', function () {
+    Employee::factory()->create([
+        'employee_number' => '2103',
+        'national_id' => '119800507151',
+        'full_name' => 'كريم محمد',
+        'workplace' => 'hr_general',
+    ]);
+
+    $component = Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '2103')
+        ->set('nationalId', '119800507151')
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('workplace', 'hr_general')
+        ->set('dateOfBirth', '1980-01-01')
+        ->set('city', 'tripoli');
+
+    $component->instance()->address = 'حي الأندلس 12';
+    $component->instance()->phone = '09ab345678';
+
+    $component
+        ->call('saveEmployeeDetails')
+        ->assertHasErrors(['address', 'phone']);
+});
+
 it('persists step one draft in session and restores on remount', function () {
     Livewire::test(MedicalRegistrationForm::class)
         ->set('employeeNumber', '4581')

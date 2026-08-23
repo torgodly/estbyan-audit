@@ -90,11 +90,29 @@ class MedicalRegistrationForm
                             ->disabled()
                             ->dehydrated(false)
                             ->helperText('يُحسب تلقائياً من المستفيدين المضافين'),
-                        TextInput::make('phone')->label('الهاتف')->tel(),
-                        TextInput::make('whatsapp')->label('واتساب')->tel(),
+                        TextInput::make('phone')
+                            ->label('الهاتف')
+                            ->tel()
+                            ->rule('regex:/^\+?[0-9]+$/')
+                            ->validationMessages([
+                                'regex' => 'رقم الهاتف يجب أن يحتوي على أرقام فقط',
+                            ]),
+                        TextInput::make('whatsapp')
+                            ->label('واتساب')
+                            ->tel()
+                            ->rule('regex:/^\+?[0-9]*$/')
+                            ->validationMessages([
+                                'regex' => 'رقم الواتساب يجب أن يحتوي على أرقام فقط',
+                            ]),
                         TextInput::make('email')->label('البريد')->email(),
                         Select::make('city')->label('المدينة')->options(config('registration.cities')),
-                        TextInput::make('address')->label('العنوان')->columnSpanFull(),
+                        TextInput::make('address')
+                            ->label('العنوان')
+                            ->rule('regex:/^[^0-9٠-٩]+$/u')
+                            ->validationMessages([
+                                'regex' => 'العنوان السكني يجب ألا يحتوي على أرقام',
+                            ])
+                            ->columnSpanFull(),
                     ]),
                 Section::make('السجل الطبي')
                     ->columns(2)
