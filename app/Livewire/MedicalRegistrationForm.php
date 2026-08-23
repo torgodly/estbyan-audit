@@ -385,7 +385,6 @@ class MedicalRegistrationForm extends Component
             'jobTitle' => ['required', Rule::in(array_keys(config('registration.job_titles')))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
-            'beneficiariesCount' => ['required', 'integer', 'min:0', 'max:20'],
             'phone' => ['required', 'string', 'min:9', 'max:15'],
             'whatsapp' => ['nullable', 'string', 'max:15'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -403,10 +402,6 @@ class MedicalRegistrationForm extends Component
             'gender.in' => 'قيمة الجنس غير صالحة',
             'maritalStatus.required' => 'الحالة الاجتماعية مطلوبة',
             'maritalStatus.in' => 'الحالة الاجتماعية المحددة غير صالحة',
-            'beneficiariesCount.required' => 'عدد المستفيدين مطلوب',
-            'beneficiariesCount.integer' => 'عدد المستفيدين يجب أن يكون رقماً صحيحاً',
-            'beneficiariesCount.min' => 'عدد المستفيدين لا يمكن أن يكون أقل من صفر',
-            'beneficiariesCount.max' => 'عدد المستفيدين لا يمكن أن يتجاوز 20',
             'phone.required' => 'رقم الهاتف مطلوب',
             'phone.min' => 'رقم الهاتف قصير جداً (9 أرقام على الأقل)',
             'phone.max' => 'رقم الهاتف طويل جداً',
@@ -467,7 +462,7 @@ class MedicalRegistrationForm extends Component
                 'required',
                 Rule::in(array_map(
                     fn (BeneficiaryRelationship $r) => $r->value,
-                    BeneficiaryRelationship::availableFor($this->maritalStatus),
+                    $this->availableBeneficiaryRelationships(),
                 )),
             ],
             'beneficiaryNationalId' => ['required', 'string', new LibyanNationalId],
@@ -502,8 +497,8 @@ class MedicalRegistrationForm extends Component
             'beneficiaryName.max' => 'اسم المستفيد طويل جداً',
             'beneficiaryRelationship.required' => 'صلة القرابة مطلوبة',
             'beneficiaryRelationship.in' => $this->maritalStatus === MaritalStatus::Single->value
-                ? 'الأعزب يمكنه إضافة الوالدين فقط'
-                : 'صلة القرابة المحددة غير صالحة',
+                ? 'الأعزب يمكنه إضافة الوالدين فقط، وبحد أقصى أب واحد وأم واحدة'
+                : 'صلة القرابة غير متاحة أو تجاوزت الحد المسموح (4 أزواج/زوجات، أب واحد، أم واحدة)',
             'beneficiaryNationalId.required' => 'الرقم الوطني للمستفيد مطلوب',
             'beneficiaryDateOfBirth.required' => 'تاريخ ميلاد المستفيد مطلوب',
             'beneficiaryDateOfBirth.date' => 'صيغة تاريخ ميلاد المستفيد غير صحيحة',
@@ -521,6 +516,13 @@ class MedicalRegistrationForm extends Component
         ]);
 
         $relationship = BeneficiaryRelationship::from($this->beneficiaryRelationship);
+
+        if (! $relationship->canAdd($this->beneficiaries, $this->editingBeneficiaryIndex)) {
+            throw ValidationException::withMessages([
+                'beneficiaryRelationship' => $relationship->limitExceededMessage(),
+            ]);
+        }
+
         $expectedGender = $relationship->expectedGender();
 
         if (
@@ -646,6 +648,21 @@ class MedicalRegistrationForm extends Component
             fn (BeneficiaryRelationship $relationship): string => $relationship->value,
             BeneficiaryRelationship::availableFor($this->maritalStatus),
         );
+
+        $counts = collect($this->beneficiaries)
+            ->groupBy(fn (array $beneficiary): string => $beneficiary['relationship'] ?? '')
+            ->map->count();
+
+        foreach (BeneficiaryRelationship::cases() as $relationship) {
+            $max = $relationship->maxAllowed();
+            $count = (int) ($counts[$relationship->value] ?? 0);
+
+            if ($max !== null && $count > $max) {
+                $this->addError('beneficiaries', $relationship->limitExceededMessage());
+
+                return;
+            }
+        }
 
         $hasInvalid = collect($this->beneficiaries)->contains(
             fn (array $beneficiary): bool => ! in_array($beneficiary['relationship'] ?? '', $allowed, true),
@@ -830,6 +847,8 @@ class MedicalRegistrationForm extends Component
 
     public function render()
     {
+        $this->discardUnpreviewableUploads();
+
         return view('livewire.medical-registration-form', [
             'workplaces' => WorkplaceOptions::options($this->workplace),
             'jobTitles' => config('registration.job_titles'),
@@ -845,6 +864,47 @@ class MedicalRegistrationForm extends Component
                 6 => 'المراجعة',
             ],
         ]);
+    }
+
+    /**
+     * Safe Livewire temp-upload preview URL. Never throws FileNotPreviewableException.
+     */
+    public function temporaryUploadPreviewUrl(mixed $file): ?string
+    {
+        if (! $file instanceof TemporaryUploadedFile) {
+            return null;
+        }
+
+        try {
+            if (! $file->isPreviewable()) {
+                return null;
+            }
+
+            return $file->temporaryUrl();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Drop stale/broken temp uploads (e.g. empty extension from mobile cameras)
+     * so step 5 can fall back to the already-saved employee photo while editing.
+     */
+    protected function discardUnpreviewableUploads(): void
+    {
+        if (
+            $this->employeePhoto instanceof TemporaryUploadedFile
+            && ! $this->employeePhoto->isPreviewable()
+        ) {
+            $this->employeePhoto = null;
+        }
+
+        if (
+            $this->beneficiaryPhoto instanceof TemporaryUploadedFile
+            && ! $this->beneficiaryPhoto->isPreviewable()
+        ) {
+            $this->beneficiaryPhoto = null;
+        }
     }
 
     protected function goToStep(int $step): void
@@ -923,7 +983,7 @@ class MedicalRegistrationForm extends Component
     protected function isAutoPersistField(string $property): bool
     {
         return in_array($property, [
-            'dateOfBirth', 'workplace', 'jobTitle', 'gender', 'maritalStatus', 'beneficiariesCount',
+            'dateOfBirth', 'workplace', 'jobTitle', 'gender', 'maritalStatus',
             'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -952,7 +1012,7 @@ class MedicalRegistrationForm extends Component
             'job_title' => $this->jobTitle ?: null,
             'gender' => $this->gender ?: null,
             'marital_status' => $this->maritalStatus ?: null,
-            'beneficiaries_count' => $this->beneficiariesCount !== '' ? (int) $this->beneficiariesCount : null,
+            'beneficiaries_count' => count($this->beneficiaries),
             'phone' => $this->phone ?: null,
             'whatsapp' => $this->whatsapp ?: null,
             'email' => $this->email ?: null,
@@ -1041,7 +1101,11 @@ class MedicalRegistrationForm extends Component
             'photo_path' => $b->photo_path,
         ])->all();
 
-        $registration->update(['current_step' => $this->step]);
+        $this->beneficiariesCount = (string) count($this->beneficiaries);
+        $registration->update([
+            'beneficiaries_count' => count($this->beneficiaries),
+            'current_step' => $this->step,
+        ]);
         $this->hasSavedDraft = true;
     }
 
@@ -1058,7 +1122,7 @@ class MedicalRegistrationForm extends Component
         $this->jobTitle = $registration->job_title ?? '';
         $this->gender = $registration->gender?->value ?? 'male';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
-        $this->beneficiariesCount = (string) ($registration->beneficiaries_count ?? '');
+        $this->beneficiariesCount = (string) $registration->beneficiaries->count();
         $this->phone = $registration->phone ?? '';
         $this->whatsapp = $registration->whatsapp ?? '';
         $this->email = $registration->email ?? '';
@@ -1181,17 +1245,35 @@ class MedicalRegistrationForm extends Component
     {
         $allowed = array_map(
             fn (BeneficiaryRelationship $relationship): string => $relationship->value,
-            BeneficiaryRelationship::availableFor($this->maritalStatus),
+            $this->availableBeneficiaryRelationships(),
         );
 
-        if (! in_array($this->beneficiaryRelationship, $allowed, true)) {
+        if ($allowed === [] || ! in_array($this->beneficiaryRelationship, $allowed, true)) {
             $this->beneficiaryRelationship = $this->defaultBeneficiaryRelationship();
         }
     }
 
+    /**
+     * @return list<BeneficiaryRelationship>
+     */
+    public function availableBeneficiaryRelationships(): array
+    {
+        return BeneficiaryRelationship::availableFor(
+            $this->maritalStatus,
+            $this->beneficiaries,
+            $this->editingBeneficiaryIndex,
+        );
+    }
+
+    public function canAddMoreBeneficiaries(): bool
+    {
+        return $this->availableBeneficiaryRelationships() !== []
+            || $this->editingBeneficiaryIndex !== null;
+    }
+
     protected function defaultBeneficiaryRelationship(): string
     {
-        $available = BeneficiaryRelationship::availableFor($this->maritalStatus);
+        $available = $this->availableBeneficiaryRelationships();
 
         return ($available[0] ?? BeneficiaryRelationship::Father)->value;
     }

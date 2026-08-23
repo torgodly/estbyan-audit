@@ -15,13 +15,13 @@
                 <h2 class="reg-card-title">المستفيدون</h2>
                 <p class="reg-card-subtitle !mt-1">
                     @if ($maritalStatus === 'married')
-                        أضف الزوج/الزوجة والأبناء والوالدين المشمولين بالتغطية
+                        أضف المستفيدين المشمولين: حتى 4 أزواج/زوجات، وأبناء، وأب واحد، وأم واحدة
                     @else
-                        أضف الوالدين المشمولين بالتغطية
+                        أضف الوالدين المشمولين: أب واحد وأم واحدة
                     @endif
                 </p>
             </div>
-            @if (count($beneficiaries) > 0 && ! $showBeneficiaryForm)
+            @if (count($beneficiaries) > 0 && ! $showBeneficiaryForm && $this->canAddMoreBeneficiaries())
                 <button wire:click="toggleBeneficiaryForm" type="button" class="reg-btn-primary shrink-0 sm:!w-auto sm:min-w-[10rem]">
                     <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                     إضافة مستفيد
@@ -52,17 +52,23 @@
                     <div>
                         <label class="reg-label">القرابة</label>
                         <select wire:model.live="beneficiaryRelationship" class="reg-select">
-                            @foreach (\App\Enums\BeneficiaryRelationship::availableFor($maritalStatus) as $relationship)
-                                <option value="{{ $relationship->value }}">{{ $relationship->label() }}</option>
+                            @foreach ($this->availableBeneficiaryRelationships() as $relationship)
+                                <option value="{{ $relationship->value }}">
+                                    {{ $relationship->label() }}
+                                    @if ($relationship->limitHint())
+                                        — {{ $relationship->limitHint() }}
+                                    @endif
+                                </option>
                             @endforeach
                         </select>
                         <p class="mt-1 text-xs text-slate-400">
                             @if ($maritalStatus === 'married')
-                                متاح: الزوج/الزوجة، الأبناء، والأب والأم
+                                الحد: 4 أزواج/زوجات · أب واحد · أم واحدة · أبناء بلا حد ثابت
                             @else
-                                متاح حالياً: الأب والأم فقط
+                                الحد: أب واحد · أم واحدة
                             @endif
                         </p>
+                        @error('beneficiaryRelationship') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="reg-label">فصيلة الدم</label>
@@ -90,12 +96,15 @@
                 <div>
                     <label class="reg-label">صورة المستفيد <span class="reg-required">*</span></label>
                     <div class="reg-photo-picker">
+                        @php
+                            $beneficiaryPhotoPreview = $this->temporaryUploadPreviewUrl($beneficiaryPhoto);
+                        @endphp
                         <div @class([
                             'reg-photo-preview',
-                            'reg-photo-preview-filled' => $beneficiaryPhoto || $beneficiaryExistingPhotoPath,
+                            'reg-photo-preview-filled' => $beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath,
                         ])>
-                            @if ($beneficiaryPhoto)
-                                <img src="{{ $beneficiaryPhoto->temporaryUrl() }}" alt="معاينة صورة المستفيد" class="size-full object-cover">
+                            @if ($beneficiaryPhotoPreview)
+                                <img src="{{ $beneficiaryPhotoPreview }}" alt="معاينة صورة المستفيد" class="size-full object-cover">
                             @elseif ($beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null)
                                 <img src="{{ $this->beneficiaryPhotoUrl($beneficiaries[$editingBeneficiaryIndex] ?? null) }}" alt="صورة المستفيد" class="size-full object-cover">
                             @else
@@ -105,9 +114,9 @@
                                 </div>
                             @endif
 
-                            @if ($beneficiaryPhoto || $beneficiaryExistingPhotoPath)
+                            @if ($beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath)
                                 <span class="reg-photo-badge">
-                                    @if ($beneficiaryPhoto)
+                                    @if ($beneficiaryPhotoPreview)
                                         معاينة جديدة
                                     @else
                                         محفوظة
@@ -118,7 +127,7 @@
 
                         <label class="reg-btn-secondary mt-3 !min-h-11 w-full cursor-pointer sm:!w-auto sm:min-w-[10rem]">
                             <span wire:loading.remove wire:target="beneficiaryPhoto">
-                                {{ ($beneficiaryPhoto || $beneficiaryExistingPhotoPath) ? 'تغيير الصورة' : 'اختيار صورة' }}
+                                {{ ($beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath) ? 'تغيير الصورة' : 'اختيار صورة' }}
                             </span>
                             <span wire:loading wire:target="beneficiaryPhoto">جاري الرفع…</span>
                             <x-reg-photo-input property="beneficiaryPhoto" label="صورة المستفيد" />

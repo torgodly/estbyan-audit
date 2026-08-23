@@ -61,26 +61,19 @@
             </div>
         </div>
 
-        <div class="reg-grid-2">
-            <div>
-                <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
-                <select wire:model.live="maritalStatus" class="reg-select">
-                    <option value="single">أعزب / عزباء</option>
-                    <option value="married">متزوج / متزوجة</option>
-                </select>
-            </div>
-            <div>
-                <label class="reg-label">عدد المستفيدين <span class="reg-required">*</span></label>
-                <input wire:model.blur="beneficiariesCount" type="number" inputmode="numeric" min="0" max="20" class="reg-input" placeholder="0">
-                <p class="mt-1 text-xs text-slate-400">
-                    @if ($maritalStatus === 'married')
-                        يمكن إضافة الزوج/الزوجة والأبناء والوالدين
-                    @else
-                        يمكن إضافة الوالدين
-                    @endif
-                </p>
-                @error('beneficiariesCount') <p class="reg-field-error">{{ $message }}</p> @enderror
-            </div>
+        <div>
+            <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
+            <select wire:model.live="maritalStatus" class="reg-select">
+                <option value="single">أعزب / عزباء</option>
+                <option value="married">متزوج / متزوجة</option>
+            </select>
+            <p class="mt-1 text-xs text-slate-400">
+                @if ($maritalStatus === 'married')
+                    المستفيدون يُضافون لاحقاً: حتى 4 أزواج/زوجات، وأبناء، وأب واحد، وأم واحدة
+                @else
+                    المستفيدون يُضافون لاحقاً: أب واحد وأم واحدة
+                @endif
+            </p>
         </div>
     </div>
 

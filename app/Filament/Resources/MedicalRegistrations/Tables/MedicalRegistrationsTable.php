@@ -59,6 +59,7 @@ class MedicalRegistrationsTable
                     ->color(fn (RegistrationStatus $state): string => $state->color()),
                 TextColumn::make('beneficiaries_count')
                     ->label('المستفيدون')
+                    ->state(fn (MedicalRegistration $record): int => $record->beneficiaries()->count())
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('reviewer.name')

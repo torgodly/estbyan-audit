@@ -7,8 +7,10 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Settings\RegistrationSettings;
 use App\Support\LibyanNationalId;
+use App\Support\RegistrationDocuments;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -152,7 +154,6 @@ it('requires workplace and job title before continuing from employee details', f
         ->call('verifyIdentity')
         ->set('dateOfBirth', '1980-01-01')
         ->set('city', 'tripoli')
-        ->set('beneficiariesCount', '0')
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
         ->call('saveEmployeeDetails')
@@ -190,7 +191,6 @@ it('restores registration after refresh simulation', function () {
         ->set('jobTitle', 'employee')
         ->set('dateOfBirth', '1980-01-01')
         ->set('city', 'tripoli')
-        ->set('beneficiariesCount', '2')
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
         ->call('saveEmployeeDetails')
@@ -227,7 +227,6 @@ it('requires date of birth year to match national id', function () {
         ->set('jobTitle', 'employee')
         ->set('dateOfBirth', '1990-01-01')
         ->set('city', 'tripoli')
-        ->set('beneficiariesCount', '0')
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
         ->call('saveEmployeeDetails')
@@ -827,6 +826,62 @@ it('logs out from the success page without deleting the registration', function 
     expect($registration->fresh())->not->toBeNull()
         ->and(session('registration_gate_passed'))->toBeNull()
         ->and(session('registration_id'))->toBeNull();
+});
+
+it('opens documents while editing without crashing on a non-previewable temp upload', function () {
+    Storage::fake(RegistrationDocuments::diskName());
+    Storage::fake('tmp-for-tests');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1981);
+    $employee = Employee::factory()->create([
+        'employee_number' => '9201',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'تعديل الصورة',
+        'workplace' => 'hr_general',
+    ]);
+
+    $photoPath = 'registrations/demo/employee.jpg';
+    RegistrationDocuments::disk()->put($photoPath, 'fake-photo');
+
+    MedicalRegistration::factory()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '9201',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'تعديل الصورة',
+        'workplace' => 'hr_general',
+        'status' => RegistrationStatus::Editing,
+        'current_step' => 4,
+        'employee_photo_path' => $photoPath,
+        'consent_at' => now(),
+        'date_of_birth' => '1981-03-03',
+        'phone' => '0911111111',
+        'city' => 'tripoli',
+        'address' => 'طرابلس',
+        'beneficiaries_count' => 0,
+    ]);
+
+    Storage::disk('tmp-for-tests')->put('livewire-tmp/stale-upload', 'broken');
+    $staleUpload = TemporaryUploadedFile::createFromLivewire('stale-upload');
+
+    expect($staleUpload->isPreviewable())->toBeFalse();
+
+    $component = Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '9201')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity');
+
+    $component->instance()->employeePhoto = $staleUpload;
+
+    $component
+        ->call('continueFromBeneficiaries')
+        ->assertSet('step', 5)
+        ->assertSet('employeePhoto', null)
+        ->assertSet('hasEmployeePhoto', true)
+        ->assertSee('إرفاق المستندات')
+        ->assertSee('محفوظة');
+
+    expect($component->instance()->temporaryUploadPreviewUrl($staleUpload))->toBeNull();
 });
 
 it('downloads a reference card for the session registration', function () {

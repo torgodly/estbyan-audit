@@ -10,12 +10,15 @@
             <p class="mt-1 text-xs text-slate-500">{{ \App\Support\RegistrationUploads::sizeHint() }} — مطلوبة لإصدار بطاقة التأمين</p>
 
             <div class="reg-photo-picker mt-4 !items-center">
+                @php
+                    $employeePhotoPreview = $this->temporaryUploadPreviewUrl($employeePhoto);
+                @endphp
                 <div @class([
                     'reg-photo-preview',
-                    'reg-photo-preview-filled' => $employeePhoto || $hasEmployeePhoto,
+                    'reg-photo-preview-filled' => $employeePhotoPreview || $hasEmployeePhoto,
                 ])>
-                    @if ($employeePhoto)
-                        <img src="{{ $employeePhoto->temporaryUrl() }}" alt="معاينة صورة الموظف" class="size-full object-cover">
+                    @if ($employeePhotoPreview)
+                        <img src="{{ $employeePhotoPreview }}" alt="معاينة صورة الموظف" class="size-full object-cover">
                     @elseif ($hasEmployeePhoto && $this->registration()?->employee_photo_path)
                         <img src="{{ \App\Support\RegistrationDocuments::url($this->registration(), \App\Support\RegistrationDocuments::EMPLOYEE_PHOTO) }}" alt="صورة الموظف" class="size-full object-cover">
                     @else
@@ -25,16 +28,16 @@
                         </div>
                     @endif
 
-                    @if ($employeePhoto || $hasEmployeePhoto)
+                    @if ($employeePhotoPreview || $hasEmployeePhoto)
                         <span class="reg-photo-badge">
-                            {{ $employeePhoto ? 'معاينة جديدة' : 'محفوظة' }}
+                            {{ $employeePhotoPreview ? 'معاينة جديدة' : 'محفوظة' }}
                         </span>
                     @endif
                 </div>
 
                 <label class="reg-btn-secondary mt-3 !min-h-11 w-full cursor-pointer sm:!w-auto sm:min-w-[10rem]">
                     <span wire:loading.remove wire:target="employeePhoto">
-                        {{ ($employeePhoto || $hasEmployeePhoto) ? 'تغيير الصورة' : 'اختيار صورة' }}
+                        {{ ($employeePhotoPreview || $hasEmployeePhoto) ? 'تغيير الصورة' : 'اختيار صورة' }}
                     </span>
                     <span wire:loading wire:target="employeePhoto">جاري الرفع…</span>
                     <x-reg-photo-input property="employeePhoto" label="صورة الموظف" />

@@ -52,7 +52,7 @@
             </div>
             <div class="reg-report-item">
                 <dt>عدد المستفيدين</dt>
-                <dd>{{ $beneficiariesCount !== '' ? $beneficiariesCount : '—' }}</dd>
+                <dd>{{ count($beneficiaries) }}</dd>
             </div>
             <div class="reg-report-item">
                 <dt>الهاتف</dt>
@@ -106,13 +106,7 @@
                 </div>
                 <div class="reg-report-count">
                     <span class="reg-report-count-value">{{ count($beneficiaries) }}</span>
-                    <span class="reg-report-count-label">
-                        @if ($beneficiariesCount !== '' && (int) $beneficiariesCount !== count($beneficiaries))
-                            من {{ $beneficiariesCount }}
-                        @else
-                            مستفيد
-                        @endif
-                    </span>
+                    <span class="reg-report-count-label">مستفيد</span>
                 </div>
             </div>
         </div>
