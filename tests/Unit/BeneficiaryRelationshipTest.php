@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BeneficiaryRelationship;
+use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use Tests\TestCase;
 
@@ -34,7 +35,14 @@ it('allows only one father and one mother', function () {
         ->not->toContain(BeneficiaryRelationship::Mother);
 });
 
-it('allows up to four spouses and no more', function () {
+it('allows up to four wives for male employees and one husband for female employees', function () {
+    expect(BeneficiaryRelationship::maxSpousesFor(Gender::Male))->toBe(4)
+        ->and(BeneficiaryRelationship::maxSpousesFor(Gender::Female))->toBe(1)
+        ->and(BeneficiaryRelationship::Spouse->label(Gender::Male))->toBe('زوجة')
+        ->and(BeneficiaryRelationship::Spouse->label(Gender::Female))->toBe('زوج')
+        ->and(BeneficiaryRelationship::Spouse->expectedGender(Gender::Male))->toBe(Gender::Female)
+        ->and(BeneficiaryRelationship::Spouse->expectedGender(Gender::Female))->toBe(Gender::Male);
+
     $threeSpouses = [
         ['relationship' => 'spouse'],
         ['relationship' => 'spouse'],
@@ -44,10 +52,16 @@ it('allows up to four spouses and no more', function () {
         ...$threeSpouses,
         ['relationship' => 'spouse'],
     ];
+    $oneSpouse = [
+        ['relationship' => 'spouse'],
+    ];
 
-    expect(BeneficiaryRelationship::Spouse->canAdd($threeSpouses))->toBeTrue()
-        ->and(BeneficiaryRelationship::Spouse->canAdd($fourSpouses))->toBeFalse()
-        ->and(BeneficiaryRelationship::Spouse->remainingSlots($threeSpouses))->toBe(1)
-        ->and(BeneficiaryRelationship::availableFor(MaritalStatus::Married, $fourSpouses))
+    expect(BeneficiaryRelationship::Spouse->canAdd($threeSpouses, null, Gender::Male))->toBeTrue()
+        ->and(BeneficiaryRelationship::Spouse->canAdd($fourSpouses, null, Gender::Male))->toBeFalse()
+        ->and(BeneficiaryRelationship::Spouse->canAdd([], null, Gender::Female))->toBeTrue()
+        ->and(BeneficiaryRelationship::Spouse->canAdd($oneSpouse, null, Gender::Female))->toBeFalse()
+        ->and(BeneficiaryRelationship::availableFor(MaritalStatus::Married, $fourSpouses, null, Gender::Male))
+        ->not->toContain(BeneficiaryRelationship::Spouse)
+        ->and(BeneficiaryRelationship::availableFor(MaritalStatus::Married, $oneSpouse, null, Gender::Female))
         ->not->toContain(BeneficiaryRelationship::Spouse);
 });

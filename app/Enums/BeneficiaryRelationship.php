@@ -10,10 +10,14 @@ enum BeneficiaryRelationship: string
     case Father = 'father';
     case Mother = 'mother';
 
-    public function label(): string
+    public function label(?Gender $employeeGender = null): string
     {
         return match ($this) {
-            self::Spouse => 'زوج / زوجة',
+            self::Spouse => match ($employeeGender) {
+                Gender::Male => 'زوجة',
+                Gender::Female => 'زوج',
+                default => 'زوج / زوجة',
+            },
             self::Son => 'ابن',
             self::Daughter => 'ابنة',
             self::Father => 'أب',
@@ -32,12 +36,16 @@ enum BeneficiaryRelationship: string
         };
     }
 
-    public function expectedGender(): ?Gender
+    public function expectedGender(?Gender $employeeGender = null): ?Gender
     {
         return match ($this) {
             self::Son, self::Father => Gender::Male,
             self::Daughter, self::Mother => Gender::Female,
-            self::Spouse => null,
+            self::Spouse => match ($employeeGender) {
+                Gender::Male => Gender::Female,
+                Gender::Female => Gender::Male,
+                default => null,
+            },
         };
     }
 
@@ -49,24 +57,64 @@ enum BeneficiaryRelationship: string
         };
     }
 
+    public function isChild(): bool
+    {
+        return match ($this) {
+            self::Son, self::Daughter => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Spouse and mother may always be non-Libyan.
+     * Children become non-Libyan only when the form forces it (non-Libyan husband).
+     */
+    public function allowsNonLibyan(): bool
+    {
+        return match ($this) {
+            self::Spouse, self::Mother => true,
+            self::Son, self::Daughter, self::Father => false,
+        };
+    }
+
+    /**
+     * Male employees may register up to 4 wives; female employees one husband.
+     */
+    public static function maxSpousesFor(Gender|string $employeeGender): int
+    {
+        $gender = $employeeGender instanceof Gender
+            ? $employeeGender
+            : Gender::from($employeeGender);
+
+        return match ($gender) {
+            Gender::Male => 4,
+            Gender::Female => 1,
+        };
+    }
+
     /**
      * Null means no fixed upper limit.
      */
-    public function maxAllowed(): ?int
+    public function maxAllowed(?Gender $employeeGender = null): ?int
     {
         return match ($this) {
             self::Father, self::Mother => 1,
-            self::Spouse => 4,
+            self::Spouse => $employeeGender !== null
+                ? self::maxSpousesFor($employeeGender)
+                : 4,
             self::Son, self::Daughter => null,
         };
     }
 
-    public function limitHint(): ?string
+    public function limitHint(?Gender $employeeGender = null): ?string
     {
         return match ($this) {
             self::Father => 'أب واحد فقط',
             self::Mother => 'أم واحدة فقط',
-            self::Spouse => 'حتى 4 أزواج / زوجات',
+            self::Spouse => match ($employeeGender) {
+                Gender::Female => 'زوج واحد فقط',
+                default => 'حتى 4 زوجات',
+            },
             self::Son, self::Daughter => null,
         };
     }
@@ -94,9 +142,9 @@ enum BeneficiaryRelationship: string
     /**
      * @param  list<array{relationship?: string}>  $beneficiaries
      */
-    public function remainingSlots(array $beneficiaries, ?int $ignoreIndex = null): ?int
+    public function remainingSlots(array $beneficiaries, ?int $ignoreIndex = null, ?Gender $employeeGender = null): ?int
     {
-        $max = $this->maxAllowed();
+        $max = $this->maxAllowed($employeeGender);
 
         if ($max === null) {
             return null;
@@ -108,22 +156,43 @@ enum BeneficiaryRelationship: string
     /**
      * @param  list<array{relationship?: string}>  $beneficiaries
      */
-    public function canAdd(array $beneficiaries, ?int $ignoreIndex = null): bool
+    public function canAdd(array $beneficiaries, ?int $ignoreIndex = null, ?Gender $employeeGender = null): bool
     {
-        $remaining = $this->remainingSlots($beneficiaries, $ignoreIndex);
+        $remaining = $this->remainingSlots($beneficiaries, $ignoreIndex, $employeeGender);
 
         return $remaining === null || $remaining > 0;
     }
 
-    public function limitExceededMessage(): string
+    public function limitExceededMessage(?Gender $employeeGender = null): string
     {
         return match ($this) {
             self::Father => 'لا يمكن إضافة أكثر من أب واحد.',
             self::Mother => 'لا يمكن إضافة أكثر من أم واحدة.',
-            self::Spouse => 'لا يمكن إضافة أكثر من 4 أزواج / زوجات.',
+            self::Spouse => match ($employeeGender) {
+                Gender::Female => 'يمكن إضافة زوج واحد فقط.',
+                default => 'يمكن إضافة حتى 4 زوجات فقط.',
+            },
             self::Son => 'تم تجاوز الحد المسموح للأبناء.',
             self::Daughter => 'تم تجاوز الحد المسموح للبنات.',
         };
+    }
+
+    /**
+     * Relationships allowed by marital status (ignores count limits).
+     *
+     * @return list<self>
+     */
+    public static function forMaritalStatus(MaritalStatus|string $maritalStatus): array
+    {
+        $status = $maritalStatus instanceof MaritalStatus
+            ? $maritalStatus
+            : MaritalStatus::from($maritalStatus);
+
+        return array_values(array_filter(
+            self::cases(),
+            fn (self $relationship): bool => ! $relationship->requiresMarriedEmployee()
+                || $status === MaritalStatus::Married,
+        ));
     }
 
     /**
@@ -134,20 +203,15 @@ enum BeneficiaryRelationship: string
         MaritalStatus|string $maritalStatus,
         array $beneficiaries = [],
         ?int $ignoreIndex = null,
+        Gender|string|null $employeeGender = null,
     ): array {
-        $status = $maritalStatus instanceof MaritalStatus
-            ? $maritalStatus
-            : MaritalStatus::from($maritalStatus);
+        $gender = $employeeGender instanceof Gender || $employeeGender === null
+            ? $employeeGender
+            : Gender::tryFrom($employeeGender);
 
         return array_values(array_filter(
-            self::cases(),
-            function (self $relationship) use ($status, $beneficiaries, $ignoreIndex): bool {
-                if ($relationship->requiresMarriedEmployee() && $status !== MaritalStatus::Married) {
-                    return false;
-                }
-
-                return $relationship->canAdd($beneficiaries, $ignoreIndex);
-            },
+            self::forMaritalStatus($maritalStatus),
+            fn (self $relationship): bool => $relationship->canAdd($beneficiaries, $ignoreIndex, $gender),
         ));
     }
 }

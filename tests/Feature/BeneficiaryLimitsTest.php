@@ -58,6 +58,12 @@ it('rejects a second father and syncs beneficiaries count from the list', functi
     expect($registration)->not->toBeNull()
         ->and($registration->beneficiaries_count)->toBe(1)
         ->and($registration->beneficiaries()->count())->toBe(1);
+
+    $component
+        ->set('step', 4)
+        ->set('showBeneficiaryForm', true)
+        ->assertSeeHtml('value="father"')
+        ->assertSeeHtml('disabled');
 });
 
 it('allows four spouses but rejects a fifth', function () {
@@ -113,4 +119,51 @@ it('allows four spouses but rejects a fifth', function () {
         ->assertCount('beneficiaries', 4);
 
     expect(MedicalRegistration::query()->where('employee_number', '9102')->value('beneficiaries_count'))->toBe(4);
+});
+
+it('allows only one husband for a female employee', function () {
+    Storage::fake(RegistrationDocuments::diskName());
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Female, 1982);
+    $husbandOneId = LibyanNationalId::generate(Gender::Male, 1980);
+    $husbandTwoId = LibyanNationalId::generate(Gender::Male, 1979);
+
+    Employee::factory()->create([
+        'employee_number' => '9103',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'موظفة متزوجة',
+        'workplace' => 'hr_general',
+    ]);
+
+    $component = Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '9103')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('maritalStatus', 'married')
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryName', 'الزوج الأول')
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryNationalId', $husbandOneId)
+        ->set('beneficiaryDateOfBirth', '1980-06-15')
+        ->set('beneficiaryBloodType', 'a_positive')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('husband1.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasNoErrors()
+        ->assertCount('beneficiaries', 1)
+        ->assertSee('زوج');
+
+    $component
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryName', 'الزوج الثاني')
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryNationalId', $husbandTwoId)
+        ->set('beneficiaryDateOfBirth', '1979-01-01')
+        ->set('beneficiaryBloodType', 'b_positive')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('husband2.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasErrors('beneficiaryRelationship')
+        ->assertCount('beneficiaries', 1);
+
+    expect(MedicalRegistration::query()->where('employee_number', '9103')->value('beneficiaries_count'))->toBe(1);
 });

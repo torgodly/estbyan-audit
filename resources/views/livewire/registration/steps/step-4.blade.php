@@ -15,7 +15,11 @@
                 <h2 class="reg-card-title">المستفيدون</h2>
                 <p class="reg-card-subtitle !mt-1">
                     @if ($maritalStatus === 'married')
-                        أضف المستفيدين المشمولين: حتى 4 أزواج/زوجات، وأبناء، وأب واحد، وأم واحدة
+                        @if ($employeeGender === \App\Enums\Gender::Male)
+                            أضف المستفيدين المشمولين: حتى 4 زوجات، وأبناء، وأب واحد، وأم واحدة
+                        @else
+                            أضف المستفيدين المشمولين: زوج واحد، وأبناء، وأب واحد، وأم واحدة
+                        @endif
                     @else
                         أضف الوالدين المشمولين: أب واحد وأم واحدة
                     @endif
@@ -58,22 +62,22 @@
                     <div>
                         <label class="reg-label">القرابة</label>
                         <select wire:model.live="beneficiaryRelationship" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryRelationship')])>
-                            @foreach ($this->availableBeneficiaryRelationships() as $relationship)
-                                <option value="{{ $relationship->value }}">
-                                    {{ $relationship->label() }}
-                                    @if ($relationship->limitHint())
-                                        — {{ $relationship->limitHint() }}
-                                    @endif
+                            @foreach ($this->beneficiaryRelationshipOptions() as $relationship)
+                                @php
+                                    $relationshipSelectable = $relationship->canAdd(
+                                        $beneficiaries,
+                                        $editingBeneficiaryIndex,
+                                        $employeeGender,
+                                    );
+                                @endphp
+                                <option
+                                    value="{{ $relationship->value }}"
+                                    @disabled(! $relationshipSelectable)
+                                >
+                                    {{ $relationship->label($employeeGender) }}
                                 </option>
                             @endforeach
                         </select>
-                        <p class="mt-1 text-xs text-slate-400">
-                            @if ($maritalStatus === 'married')
-                                الحد: 4 أزواج/زوجات · أب واحد · أم واحدة · أبناء بلا حد ثابت
-                            @else
-                                الحد: أب واحد · أم واحدة
-                            @endif
-                        </p>
                         @error('beneficiaryRelationship') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -86,21 +90,106 @@
                         @error('beneficiaryBloodType') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
-                <div class="reg-grid-2">
+
+                @php
+                    $allowsNonLibyan = $this->beneficiaryRelationshipAllowsNonLibyan();
+                    $forcedNonLibyanChild = $this->currentBeneficiaryMustBeNonLibyan();
+                    $isLibyanBeneficiary = $this->beneficiaryIsLibyanForCurrentRelationship();
+                @endphp
+
+                @if ($allowsNonLibyan)
                     <div>
-                        <label class="reg-label">الرقم الوطني <span class="reg-required">*</span></label>
-                        <input
-                            wire:model.blur="beneficiaryNationalId"
-                            type="text"
-                            inputmode="numeric"
-                            maxlength="12"
-                            @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryNationalId')])
-                            placeholder="120020129499"
-                            dir="ltr"
-                        >
-                        <p class="mt-1 text-xs text-slate-400">12 رقماً — يبدأ بـ 1 للذكر أو 2 للأنثى</p>
-                        @error('beneficiaryNationalId') <p class="reg-field-error">{{ $message }}</p> @enderror
+                        <label class="reg-label">هل المستفيد ليبي؟ <span class="reg-required">*</span></label>
+                        @if ($forcedNonLibyanChild)
+                            <div class="reg-segment" role="group" aria-label="هل المستفيد ليبي">
+                                <button type="button" disabled class="reg-segment-btn text-slate-500">نعم — ليبي / ليبية</button>
+                                <button type="button" class="reg-segment-btn reg-segment-btn-no" aria-pressed="true">لا — غير ليبي / غير ليبية</button>
+                            </div>
+                            <p class="mt-1 text-xs font-medium text-amber-700">لأن الزوج غير ليبي، يجب تسجيل الأبناء كغير ليبيين باستخدام جواز السفر</p>
+                        @else
+                            <div class="reg-segment" role="group" aria-label="هل المستفيد ليبي">
+                                <button
+                                    type="button"
+                                    wire:click="$set('beneficiaryIsLibyan', true)"
+                                    @class(['reg-segment-btn', 'reg-segment-btn-yes' => $beneficiaryIsLibyan])
+                                    aria-pressed="{{ $beneficiaryIsLibyan ? 'true' : 'false' }}"
+                                >
+                                    نعم — ليبي / ليبية
+                                </button>
+                                <button
+                                    type="button"
+                                    wire:click="$set('beneficiaryIsLibyan', false)"
+                                    @class(['reg-segment-btn', 'reg-segment-btn-no' => ! $beneficiaryIsLibyan])
+                                    aria-pressed="{{ $beneficiaryIsLibyan ? 'false' : 'true' }}"
+                                >
+                                    لا — غير ليبي / غير ليبية
+                                </button>
+                            </div>
+                            <p class="mt-1 text-xs text-slate-400">
+                                @if ($employeeGender === \App\Enums\Gender::Male)
+                                    الزوجة والأم فقط يمكن أن تكونا غير ليبيتين، ويُستخدم جواز السفر بدل الرقم الوطني
+                                @else
+                                    الزوج والأم يمكن أن يكونا غير ليبيين — وإذا كان الزوج غير ليبي فالأبناء أيضاً غير ليبيين
+                                @endif
+                            </p>
+                        @endif
+                        @error('beneficiaryIsLibyan') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
+                @endif
+
+                <div class="reg-grid-2">
+                    @if ($isLibyanBeneficiary)
+                        <div>
+                            <label class="reg-label">الرقم الوطني <span class="reg-required">*</span></label>
+                            <input
+                                wire:model.blur="beneficiaryNationalId"
+                                type="text"
+                                inputmode="numeric"
+                                maxlength="12"
+                                @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryNationalId')])
+                                placeholder="120020129499"
+                                dir="ltr"
+                            >
+                            <p class="mt-1 text-xs text-slate-400">12 رقماً — يبدأ بـ 1 للذكر أو 2 للأنثى</p>
+                            @error('beneficiaryNationalId') <p class="reg-field-error">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
+                            <input
+                                wire:model.blur="beneficiaryDateOfBirth"
+                                type="date"
+                                @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryDateOfBirth')])
+                            >
+                            @error('beneficiaryDateOfBirth') <p class="reg-field-error">{{ $message }}</p> @enderror
+                        </div>
+                    @else
+                        <div>
+                            <label class="reg-label">بلد الجنسية <span class="reg-required">*</span></label>
+                            <x-reg-searchable-select
+                                wire:model.live="beneficiaryNationality"
+                                :options="$nationalities"
+                                placeholder="— اختر الجنسية —"
+                                search-placeholder="ابحث عن الجنسية..."
+                                @class(['reg-input-invalid' => $errors->has('beneficiaryNationality')])
+                            />
+                            @error('beneficiaryNationality') <p class="reg-field-error">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="reg-label">رقم جواز السفر <span class="reg-required">*</span></label>
+                            <input
+                                wire:model.blur="beneficiaryPassportNumber"
+                                type="text"
+                                @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryPassportNumber')])
+                                placeholder="A12345678"
+                                dir="ltr"
+                                maxlength="40"
+                            >
+                            @error('beneficiaryPassportNumber') <p class="reg-field-error">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
+                </div>
+
+                @unless ($isLibyanBeneficiary)
                     <div>
                         <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
                         <input
@@ -110,7 +199,7 @@
                         >
                         @error('beneficiaryDateOfBirth') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
-                </div>
+                @endunless
 
                 <div>
                     <label class="reg-label">صورة المستفيد <span class="reg-required">*</span></label>
@@ -232,7 +321,7 @@
                     <div class="min-w-0">
                         <h4 class="text-lg font-extrabold text-navy-900">{{ $beneficiary['full_name'] }}</h4>
                         <div class="mt-2 flex flex-wrap gap-2">
-                            <span class="reg-tag reg-tag-relation">{{ $rel->label() }}</span>
+                            <span class="reg-tag reg-tag-relation">{{ $rel->label($employeeGender) }}</span>
                             @if ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false)
                                 <span class="reg-tag reg-tag-chronic">مرض مزمن</span>
                             @endif
@@ -245,9 +334,14 @@
                     @endif
                 </div>
                 <dl class="grid grid-cols-1 gap-2 text-sm text-slate-600 sm:grid-cols-3">
-                    @if ($beneficiary['national_id'] ?? null)
-                        <div><dt class="text-xs text-slate-400">الرقم الوطني</dt><dd class="font-bold text-slate-800">{{ $beneficiary['national_id'] }}</dd></div>
-                    @endif
+                    <div>
+                        <dt class="text-xs text-slate-400">
+                            {{ ($beneficiary['is_libyan'] ?? true) ? 'الرقم الوطني' : 'الهوية' }}
+                        </dt>
+                        <dd class="font-bold text-slate-800" @if ($beneficiary['is_libyan'] ?? true) dir="ltr" @endif>
+                            {{ $this->beneficiaryIdentityLabel($beneficiary) }}
+                        </dd>
+                    </div>
                     @if ($beneficiary['date_of_birth'] ?? null)
                         <div><dt class="text-xs text-slate-400">تاريخ الميلاد</dt><dd class="font-bold text-slate-800">{{ $beneficiary['date_of_birth'] }}</dd></div>
                     @endif
@@ -267,7 +361,7 @@
             <h3 class="text-lg font-extrabold text-navy-900">لا يوجد مستفيدون بعد</h3>
             <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
                 @if ($maritalStatus === 'married')
-                    يمكنك إضافة الزوج/الزوجة والأبناء والوالدين، مع صورة وسجل طبي لكل مستفيد.
+                    يمكنك إضافة {{ $spouseLabel }} والأبناء والوالدين، مع صورة وسجل طبي لكل مستفيد.
                 @else
                     يمكنك إضافة الأب والأم، مع صورة وسجل طبي لكل مستفيد.
                 @endif
