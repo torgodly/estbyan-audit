@@ -278,7 +278,7 @@ class MedicalRegistrationForm extends Component
         $employee = Employee::findForVerification($this->nationalId, $this->employeeNumber);
 
         if (! $employee) {
-            $this->addError('nationalId', 'لم يتم العثور على موظف بهذه البيانات. تحقق من الرقم التأميني والرقم الوطني.');
+            $this->addVisibleError('nationalId', 'لم يتم العثور على موظف بهذه البيانات. تحقق من الرقم التأميني والرقم الوطني.');
             $this->addError('employeeNumber', 'لم يتم العثور على موظف بهذه البيانات. تحقق من الرقم التأميني والرقم الوطني.');
 
             return;
@@ -569,7 +569,7 @@ class MedicalRegistrationForm extends Component
         $relationship = BeneficiaryRelationship::from($this->beneficiaryRelationship);
 
         if (! $relationship->canAdd($this->beneficiaries, $this->editingBeneficiaryIndex, $employeeGender)) {
-            throw ValidationException::withMessages([
+            $this->failValidation([
                 'beneficiaryRelationship' => $relationship->limitExceededMessage($employeeGender),
             ]);
         }
@@ -580,13 +580,13 @@ class MedicalRegistrationForm extends Component
             && ! $isLibyan
             && $this->hasLibyanChildren($this->editingBeneficiaryIndex)
         ) {
-            throw ValidationException::withMessages([
+            $this->failValidation([
                 'beneficiaryIsLibyan' => 'لا يمكن تسجيل الزوج كغير ليبي بينما يوجد أبناء ليبيون. عدّل الأبناء أولاً إلى غير ليبيين بجواز السفر.',
             ]);
         }
 
         if ($relationship->isChild() && $this->hasNonLibyanHusband() && $isLibyan) {
-            throw ValidationException::withMessages([
+            $this->failValidation([
                 'beneficiaryIsLibyan' => 'لأن الزوج غير ليبي لا يمكن تسجيل الأبناء كليبيين — أدخل الجنسية ورقم جواز السفر.',
             ]);
         }
@@ -602,7 +602,7 @@ class MedicalRegistrationForm extends Component
             $digit = $expectedGender === Gender::Male ? '1' : '2';
             $genderLabel = $expectedGender === Gender::Male ? 'ذكر' : 'أنثى';
 
-            throw ValidationException::withMessages([
+            $this->failValidation([
                 'beneficiaryNationalId' => "الرقم الوطني لـ{$relationship->label($employeeGender)} يجب أن يبدأ بـ {$digit} ({$genderLabel}).",
             ]);
         }
@@ -610,7 +610,7 @@ class MedicalRegistrationForm extends Component
         $registration = $this->registration();
 
         if (! $registration) {
-            throw ValidationException::withMessages([
+            $this->failValidation([
                 'beneficiaryName' => 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.',
             ]);
         }
@@ -624,7 +624,7 @@ class MedicalRegistrationForm extends Component
             );
 
             if (blank($stored)) {
-                throw ValidationException::withMessages([
+                $this->failValidation([
                     'beneficiaryPhoto' => RegistrationUploads::failedMessage('صورة المستفيد'),
                 ]);
             }
@@ -633,7 +633,7 @@ class MedicalRegistrationForm extends Component
         }
 
         if (blank($photoPath)) {
-            throw ValidationException::withMessages([
+            $this->failValidation([
                 'beneficiaryPhoto' => 'صورة المستفيد مطلوبة',
             ]);
         }
@@ -746,7 +746,7 @@ class MedicalRegistrationForm extends Component
             $count = (int) ($counts[$relationship->value] ?? 0);
 
             if ($max !== null && $count > $max) {
-                $this->addError('beneficiaries', $relationship->limitExceededMessage($employeeGender));
+                $this->addVisibleError('beneficiaries', $relationship->limitExceededMessage($employeeGender));
 
                 return;
             }
@@ -757,7 +757,7 @@ class MedicalRegistrationForm extends Component
         );
 
         if ($hasInvalid) {
-            $this->addError(
+            $this->addVisibleError(
                 'beneficiaries',
                 $this->maritalStatus === MaritalStatus::Single->value
                     ? 'الحالة أعزب — يرجى حذف المستفيدين من غير الوالدين قبل المتابعة'
@@ -768,7 +768,7 @@ class MedicalRegistrationForm extends Component
         }
 
         if ($this->hasNonLibyanHusband() && $this->hasLibyanChildren()) {
-            $this->addError(
+            $this->addVisibleError(
                 'beneficiaries',
                 'لأن الزوج غير ليبي لا يمكن أن يكون الأبناء ليبيين — عدّل كل ابن/ابنة وأدخل الجنسية ورقم جواز السفر',
             );
@@ -788,7 +788,7 @@ class MedicalRegistrationForm extends Component
         $registration = $this->registration();
 
         if (! $registration) {
-            $this->addError('employeePhoto', 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.');
+            $this->addVisibleError('employeePhoto', 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.');
 
             return;
         }
@@ -813,7 +813,7 @@ class MedicalRegistrationForm extends Component
             $stored = $this->storeTemporaryUpload($this->employeePhoto, $path);
 
             if (blank($stored)) {
-                $this->addError('employeePhoto', RegistrationUploads::failedMessage('صورة الموظف'));
+                $this->addVisibleError('employeePhoto', RegistrationUploads::failedMessage('صورة الموظف'));
 
                 return;
             }
@@ -823,7 +823,7 @@ class MedicalRegistrationForm extends Component
         }
 
         if (blank($registration->employee_photo_path)) {
-            $this->addError('employeePhoto', 'الصورة الشخصية للموظف مطلوبة');
+            $this->addVisibleError('employeePhoto', 'الصورة الشخصية للموظف مطلوبة');
 
             return;
         }
@@ -860,13 +860,13 @@ class MedicalRegistrationForm extends Component
         $registration = $this->registration();
 
         if (! $registration) {
-            $this->addError('submit', 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.');
+            $this->addVisibleError('submit', 'انتهت الجلسة. يرجى التحقق من الهوية مجدداً ثم أعد المحاولة.');
 
             return;
         }
 
         if (! $registration->employee_photo_path && ! $this->hasEmployeePhoto) {
-            $this->addError('submit', 'يرجى إرفاق الصورة الشخصية قبل الإرسال');
+            $this->addVisibleError('submit', 'يرجى إرفاق الصورة الشخصية قبل الإرسال');
 
             return;
         }
@@ -876,13 +876,13 @@ class MedicalRegistrationForm extends Component
         );
 
         if ($missingBeneficiaryPhoto) {
-            $this->addError('submit', 'يجب إرفاق صورة لكل مستفيد قبل الإرسال');
+            $this->addVisibleError('submit', 'يجب إرفاق صورة لكل مستفيد قبل الإرسال');
 
             return;
         }
 
         if (! $registration->isEditableByEmployee()) {
-            $this->addError('submit', 'لا يمكن تعديل طلب معتمد');
+            $this->addVisibleError('submit', 'لا يمكن تعديل طلب معتمد');
 
             return;
         }
@@ -1705,11 +1705,41 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
-        $this->validate(
-            $rules,
-            array_merge($this->arabicValidationMessages(), $messages),
-            array_merge($this->arabicValidationAttributes(), $attributes),
-        );
+        try {
+            $this->validate(
+                $rules,
+                array_merge($this->arabicValidationMessages(), $messages),
+                array_merge($this->arabicValidationAttributes(), $attributes),
+            );
+        } catch (ValidationException $exception) {
+            $this->dispatchScrollToError(array_key_first($exception->errors()));
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param  array<string, string|list<string>>  $messages
+     */
+    protected function failValidation(array $messages): never
+    {
+        $this->dispatchScrollToError(array_key_first($messages));
+
+        throw ValidationException::withMessages($messages);
+    }
+
+    protected function addVisibleError(string $field, string $message): void
+    {
+        $this->addError($field, $message);
+        $this->dispatchScrollToError($field);
+    }
+
+    protected function dispatchScrollToError(?string $field): void
+    {
+        $name = $field ? explode('.', $field)[0] : null;
+
+        $this->dispatch('reg-scroll-to-error', field: $name);
+        $this->js('window.regScrollToValidationError('.json_encode($name).')');
     }
 
     /**
@@ -1772,11 +1802,11 @@ class MedicalRegistrationForm extends Component
                         ->all();
                 }
 
-                throw ValidationException::withMessages($messages);
+                $this->failValidation($messages);
             }
         }
 
-        throw ValidationException::withMessages([
+        $this->failValidation([
             $name => RegistrationUploads::failedMessage($label),
         ]);
     }
@@ -1793,7 +1823,7 @@ class MedicalRegistrationForm extends Component
         }
 
         $this->reset($field);
-        $this->addError($field, $reason);
+        $this->addVisibleError($field, $reason);
     }
 
     protected function friendlyUploadError(string $message, string $label): string

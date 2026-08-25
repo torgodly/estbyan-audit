@@ -28,6 +28,7 @@
                     :options="$workplaces"
                     placeholder="— اختر مكان العمل —"
                     search-placeholder="ابحث عن مكان العمل..."
+                    data-reg-field="workplace"
                     @class(['reg-input-invalid' => $errors->has('workplace')])
                 />
                 @error('workplace') <p class="reg-field-error">{{ $message }}</p> @enderror
@@ -46,6 +47,7 @@
                 <input
                     wire:model.blur="dateOfBirth"
                     type="date"
+                    data-reg-field="dateOfBirth"
                     @class(['reg-input', 'reg-input-invalid' => $errors->has('dateOfBirth')])
                 >
                 @if (\App\Support\LibyanNationalId::isValid($nationalId))
@@ -55,16 +57,17 @@
             </div>
             <div>
                 <label class="reg-label">الجنس <span class="reg-required">*</span></label>
-                <div class="reg-input bg-slate-50 font-bold text-navy-900">
+                <div class="reg-input bg-slate-50 font-bold text-navy-900" data-reg-field="gender">
                     {{ $gender === 'female' ? 'أنثى' : 'ذكر' }}
                 </div>
                 <p class="mt-1 text-xs text-slate-400">يُستخرج تلقائياً من الرقم الوطني ولا يمكن تعديله</p>
+                @error('gender') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
         </div>
 
         <div>
             <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
-            <select wire:model.live="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
+            <select wire:model.live="maritalStatus" data-reg-field="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
                 <option value="single">أعزب / عزباء</option>
                 <option value="married">متزوج / متزوجة</option>
             </select>
@@ -98,6 +101,7 @@
                         inputmode="numeric"
                         maxlength="10"
                         pattern="09[1-4][0-9]{7}"
+                        data-reg-field="phone"
                         @class(['reg-input', 'reg-input-invalid' => $errors->has('phone')])
                         placeholder="091XXXXXXX"
                         dir="ltr"
@@ -114,6 +118,7 @@
                         inputmode="numeric"
                         maxlength="10"
                         pattern="09[1-4][0-9]{7}"
+                        data-reg-field="whatsapp"
                         @class(['reg-input', 'reg-input-invalid' => $errors->has('whatsapp')])
                         placeholder="091XXXXXXX"
                         dir="ltr"
@@ -129,6 +134,7 @@
                     wire:model.blur="email"
                     type="email"
                     dir="ltr"
+                    data-reg-field="email"
                     @class(['reg-input', 'text-left', 'reg-input-invalid' => $errors->has('email')])
                 >
                 @error('email') <p class="reg-field-error">{{ $message }}</p> @enderror
@@ -141,6 +147,7 @@
                         :options="$cities"
                         placeholder="— اختر المدينة —"
                         search-placeholder="ابحث عن المدينة..."
+                        data-reg-field="city"
                         @class(['reg-input-invalid' => $errors->has('city')])
                     />
                     @error('city') <p class="reg-field-error">{{ $message }}</p> @enderror
@@ -150,6 +157,7 @@
                     <input
                         wire:model.blur="address"
                         type="text"
+                        data-reg-field="address"
                         @class(['reg-input', 'reg-input-invalid' => $errors->has('address')])
                         x-on:input="$el.value = $el.value.replace(/[0-9٠-٩]/g, '')"
                     >

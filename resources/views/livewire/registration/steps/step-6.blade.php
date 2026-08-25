@@ -238,7 +238,7 @@
         </div>
     @endif
 
-    @error('submit') <p class="reg-field-error">{{ $message }}</p> @enderror
+    @error('submit') <p class="reg-field-error" data-reg-field="submit">{{ $message }}</p> @enderror
 </section>
 
 <div class="reg-actions">

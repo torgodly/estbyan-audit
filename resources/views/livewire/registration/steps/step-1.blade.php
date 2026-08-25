@@ -55,7 +55,8 @@
                             type="text"
                             inputmode="numeric"
                             autocomplete="username"
-                            class="reg-input reg-login-input"
+                            @class(['reg-input', 'reg-login-input', 'reg-input-invalid' => $errors->has('employeeNumber')])
+                            data-reg-field="employeeNumber"
                             placeholder="0000"
                             maxlength="4"
                             dir="ltr"
@@ -76,7 +77,8 @@
                             type="text"
                             inputmode="numeric"
                             autocomplete="off"
-                            class="reg-input reg-login-input"
+                            @class(['reg-input', 'reg-login-input', 'reg-input-invalid' => $errors->has('nationalId')])
+                            data-reg-field="nationalId"
                             placeholder="119990000000"
                             maxlength="12"
                             dir="ltr"
@@ -86,7 +88,7 @@
                 </div>
             </div>
 
-            <label class="reg-consent mt-6">
+            <label class="reg-consent mt-6" data-reg-field="consent" @class(['reg-input-invalid' => $errors->has('consent')])>
                 <input wire:model.live="consent" type="checkbox" class="mt-1 size-5 shrink-0 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                 <span class="text-sm leading-relaxed text-slate-600">
                     أوافق على جمع ومعالجة بياناتي الشخصية والطبية لإدارة التغطية الصحية.

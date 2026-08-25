@@ -15,6 +15,7 @@
     type="file"
     accept="{{ $accept }}"
     class="sr-only"
+    data-reg-field="{{ $property }}"
     x-on:change="
         const input = $event.target;
         const file = input.files?.[0];

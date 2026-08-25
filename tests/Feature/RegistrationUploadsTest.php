@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\Validator;
 use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 use Livewire\Livewire;
 
+it('lists clear arabic portrait photo requirements including the system file limit', function () {
+    expect(RegistrationUploads::requirementsTitle())->toBe('تعليمات ومتطلبات الصورة الشخصية')
+        ->and(RegistrationUploads::requirementItems())->toContain(RegistrationUploads::formatRequirement())
+        ->and(RegistrationUploads::formatRequirement())->toContain(RegistrationUploads::maxSizeLabel())
+        ->and(RegistrationUploads::formatRequirement())->toContain('JPG أو JPEG أو PNG')
+        ->and(RegistrationUploads::requirementsNote())->toContain('قد يتم رفضها');
+});
+
 it('caps registration photo uploads at 10 megabytes', function () {
     expect(RegistrationUploads::MAX_KILOBYTES)->toBe(10240)
         ->and(RegistrationUploads::MAX_MEGABYTES)->toBe(10)
@@ -50,7 +58,10 @@ it('shows an arabic reason when the client rejects an upload', function () {
         ->set('consent', true)
         ->call('verifyIdentity')
         ->call('reportUploadClientError', 'employeePhoto', $reason)
-        ->assertHasErrors(['employeePhoto' => $reason]);
+        ->assertHasErrors(['employeePhoto' => $reason])
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return ($params['field'] ?? null) === 'employeePhoto';
+        });
 });
 
 it('translates livewire upload failures into arabic reasons', function () {
@@ -65,5 +76,8 @@ it('translates livewire upload failures into arabic reasons', function () {
 
     Livewire::test(MedicalRegistrationForm::class)
         ->call('_uploadErrored', 'employeePhoto', $errors, false)
-        ->assertHasErrors(['employeePhoto' => $reason]);
+        ->assertHasErrors(['employeePhoto' => $reason])
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return ($params['field'] ?? null) === 'employeePhoto';
+        });
 });

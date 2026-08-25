@@ -9,6 +9,7 @@ use App\Settings\RegistrationSettings;
 use App\Support\LibyanNationalId;
 use App\Support\LibyanPhoneNumber;
 use App\Support\RegistrationDocuments;
+use App\Support\RegistrationUploads;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -92,6 +93,10 @@ it('rejects non-employees at the identity gate', function () {
         ->set('consent', true)
         ->call('verifyIdentity')
         ->assertHasErrors(['nationalId', 'employeeNumber'])
+        ->assertSee('لم يتم العثور على موظف بهذه البيانات', false)
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return ($params['field'] ?? null) === 'nationalId';
+        })
         ->assertSet('step', 1);
 
     expect(MedicalRegistration::query()->count())->toBe(0);
@@ -227,7 +232,26 @@ it('shows validation summary messages in the form when step two fails', function
         ->assertHasErrors(['workplace', 'dateOfBirth', 'phone', 'city', 'address'])
         ->assertSee('يرجى تصحيح الأخطاء التالية', false)
         ->assertSee('مكان العمل مطلوب', false)
-        ->assertSee('رقم الهاتف مطلوب', false);
+        ->assertSee('رقم الهاتف مطلوب', false)
+        ->assertSee('data-reg-jump="dateOfBirth"', false)
+        ->assertSee('data-reg-field="dateOfBirth"', false)
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return $event === 'reg-scroll-to-error' && ($params['field'] ?? null) === 'dateOfBirth';
+        });
+});
+
+it('scrolls to the first invalid login field instead of failing silently', function () {
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '')
+        ->set('nationalId', '')
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertHasErrors(['employeeNumber', 'nationalId'])
+        ->assertSee('data-reg-field="employeeNumber"', false)
+        ->assertSee('يرجى تصحيح الأخطاء التالية', false)
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return ($params['field'] ?? null) === 'employeeNumber';
+        });
 });
 
 it('accepts valid libyan mobiles starting with 091 to 094', function () {
@@ -413,6 +437,53 @@ it('saves a beneficiary with photo medical record and validated national id', fu
     Storage::disk('local')->assertExists($beneficiary->photo_path);
 });
 
+it('shows a clear photo picker on the new beneficiary form', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1974);
+
+    Employee::factory()->create([
+        'employee_number' => '5012',
+        'national_id' => $nationalId,
+        'full_name' => 'سالم علي',
+        'workplace' => 'hr_general',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '5012')
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 4)
+        ->set('showBeneficiaryForm', true)
+        ->assertSee('مستفيد جديد', false)
+        ->assertSee('اضغط هنا لاختيار الصورة الشخصية', false)
+        ->assertSee('اختيار صورة', false)
+        ->assertSee(RegistrationUploads::sizeHint(), false)
+        ->assertSee('reg-photo-dropzone', false);
+});
+
+it('shows a clear photo picker on the employee document step', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1973);
+
+    Employee::factory()->create([
+        'employee_number' => '5013',
+        'national_id' => $nationalId,
+        'full_name' => 'نوري علي',
+        'workplace' => 'hr_general',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '5013')
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 5)
+        ->assertSee('الصورة الشخصية للموظف', false)
+        ->assertSee('اضغط هنا لاختيار الصورة الشخصية', false)
+        ->assertSee('اختيار صورة', false)
+        ->assertSee(RegistrationUploads::sizeHint(), false)
+        ->assertSee('reg-photo-dropzone', false);
+});
+
 it('hides the beneficiary card while its edit form is open', function () {
     Storage::fake('local');
 
@@ -452,6 +523,9 @@ it('hides the beneficiary card while its edit form is open', function () {
         ->assertSet('showBeneficiaryForm', true)
         ->assertSet('editingBeneficiaryIndex', 0)
         ->assertSee('تعديل مستفيد')
+        ->assertSee(RegistrationUploads::requirementsTitle(), false)
+        ->assertSee('صور السيلفي', false)
+        ->assertSee(RegistrationUploads::requirementsNote(), false)
         ->assertDontSeeHtml('wire:click="editBeneficiary(0)"')
         ->assertDontSeeHtml('wire:click="deleteBeneficiary(0)"');
 });
@@ -491,6 +565,13 @@ it('continues to review when documents are already saved without re-uploading', 
         ->set('step', 5)
         ->assertDontSee('صورة من شهادة الوضع العائلي')
         ->assertSee('الصورة الشخصية للموظف')
+        ->assertSee('reg-photo-dropzone', false)
+        ->assertSee('تم اختيار صورة الموظف', false)
+        ->assertSee('تغيير الصورة', false)
+        ->assertSee(RegistrationUploads::requirementsTitle(), false)
+        ->assertSee('بيضاء أو رمادية فاتحة وسادة', false)
+        ->assertSee(RegistrationUploads::formatRequirement(), false)
+        ->assertSee(RegistrationUploads::requirementsNote(), false)
         ->assertSet('hasEmployeePhoto', true)
         ->call('saveDocuments')
         ->assertHasNoErrors()

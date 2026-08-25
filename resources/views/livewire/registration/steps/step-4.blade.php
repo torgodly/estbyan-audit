@@ -52,6 +52,7 @@
                     <input
                         wire:model.blur="beneficiaryName"
                         type="text"
+                        data-reg-field="beneficiaryName"
                         @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryName')])
                         x-on:input="$el.value = $el.value.replace(/[0-9٠-٩]/g, '')"
                     >
@@ -61,7 +62,7 @@
                 <div class="reg-grid-2">
                     <div>
                         <label class="reg-label">القرابة</label>
-                        <select wire:model.live="beneficiaryRelationship" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryRelationship')])>
+                        <select wire:model.live="beneficiaryRelationship" data-reg-field="beneficiaryRelationship" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryRelationship')])>
                             @foreach ($this->beneficiaryRelationshipOptions() as $relationship)
                                 @php
                                     $relationshipSelectable = $relationship->canAdd(
@@ -82,7 +83,7 @@
                     </div>
                     <div>
                         <label class="reg-label">فصيلة الدم</label>
-                        <select wire:model.live="beneficiaryBloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryBloodType')])>
+                        <select wire:model.live="beneficiaryBloodType" data-reg-field="beneficiaryBloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryBloodType')])>
                             @foreach (\App\Enums\BloodType::cases() as $blood)
                                 <option value="{{ $blood->value }}">{{ $blood->label() }}</option>
                             @endforeach
@@ -133,7 +134,7 @@
                                 @endif
                             </p>
                         @endif
-                        @error('beneficiaryIsLibyan') <p class="reg-field-error">{{ $message }}</p> @enderror
+                        @error('beneficiaryIsLibyan') <p class="reg-field-error" data-reg-field="beneficiaryIsLibyan">{{ $message }}</p> @enderror
                     </div>
                 @endif
 
@@ -146,6 +147,7 @@
                                 type="text"
                                 inputmode="numeric"
                                 maxlength="12"
+                                data-reg-field="beneficiaryNationalId"
                                 @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryNationalId')])
                                 placeholder="120020129499"
                                 dir="ltr"
@@ -203,46 +205,51 @@
 
                 <div>
                     <label class="reg-label">صورة المستفيد <span class="reg-required">*</span></label>
-                    <div class="reg-photo-picker">
-                        @php
-                            $beneficiaryPhotoPreview = $this->temporaryUploadPreviewUrl($beneficiaryPhoto);
-                        @endphp
-                        <div @class([
-                            'reg-photo-preview',
-                            'reg-photo-preview-filled' => $beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath,
-                        ])>
-                            @if ($beneficiaryPhotoPreview)
+                    <x-reg-photo-requirements title-id="beneficiary-photo-requirements" class="mt-2 mb-4" />
+                    @php
+                        $beneficiaryPhotoPreview = $this->temporaryUploadPreviewUrl($beneficiaryPhoto);
+                        $beneficiaryHasPhoto = (bool) ($beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath);
+                    @endphp
+                    <label
+                        data-reg-field="beneficiaryPhoto"
+                        @class([
+                            'reg-photo-dropzone',
+                            'reg-photo-dropzone-filled' => $beneficiaryHasPhoto,
+                            'reg-photo-dropzone-invalid' => $errors->has('beneficiaryPhoto'),
+                        ])
+                    >
+                        @if ($beneficiaryPhotoPreview)
+                            <div class="reg-photo-dropzone-frame">
                                 <img src="{{ $beneficiaryPhotoPreview }}" alt="معاينة صورة المستفيد" class="size-full object-cover">
-                            @elseif ($beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null)
+                                <span class="reg-photo-badge">معاينة جديدة</span>
+                            </div>
+                        @elseif ($beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null)
+                            <div class="reg-photo-dropzone-frame">
                                 <img src="{{ $this->beneficiaryPhotoUrl($beneficiaries[$editingBeneficiaryIndex] ?? null) }}" alt="صورة المستفيد" class="size-full object-cover">
-                            @else
-                                <div class="flex flex-col items-center gap-2 px-4 text-center">
-                                    <svg class="size-9 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
-                                    <span class="text-xs text-slate-400">{{ \App\Support\RegistrationUploads::sizeHint() }}</span>
-                                </div>
-                            @endif
+                                <span class="reg-photo-badge">محفوظة</span>
+                            </div>
+                        @else
+                            <div class="reg-photo-dropzone-icon" aria-hidden="true">
+                                <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
+                            </div>
+                        @endif
 
-                            @if ($beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath)
-                                <span class="reg-photo-badge">
-                                    @if ($beneficiaryPhotoPreview)
-                                        معاينة جديدة
-                                    @else
-                                        محفوظة
-                                    @endif
+                        <div class="reg-photo-dropzone-copy">
+                            <p class="reg-photo-dropzone-title">
+                                <span wire:loading.remove wire:target="beneficiaryPhoto">
+                                    {{ $beneficiaryHasPhoto ? 'تم اختيار صورة المستفيد' : 'اضغط هنا لاختيار الصورة الشخصية' }}
                                 </span>
-                            @endif
+                                <span wire:loading wire:target="beneficiaryPhoto">جاري رفع الصورة…</span>
+                            </p>
+                            <p class="reg-photo-dropzone-hint">{{ \App\Support\RegistrationUploads::sizeHint() }} — الوجه واضح على خلفية فاتحة</p>
+                            <span class="reg-photo-dropzone-cta">
+                                {{ $beneficiaryHasPhoto ? 'تغيير الصورة' : 'اختيار صورة' }}
+                            </span>
                         </div>
 
-                        <label class="reg-btn-secondary mt-3 !min-h-11 w-full cursor-pointer sm:!w-auto sm:min-w-[10rem]">
-                            <span wire:loading.remove wire:target="beneficiaryPhoto">
-                                {{ ($beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath) ? 'تغيير الصورة' : 'اختيار صورة' }}
-                            </span>
-                            <span wire:loading wire:target="beneficiaryPhoto">جاري الرفع…</span>
-                            <x-reg-photo-input property="beneficiaryPhoto" label="صورة المستفيد" />
-                        </label>
-
-                        @error('beneficiaryPhoto') <p class="reg-field-error mt-2">{{ $message }}</p> @enderror
-                    </div>
+                        <x-reg-photo-input property="beneficiaryPhoto" label="صورة المستفيد" />
+                    </label>
+                    @error('beneficiaryPhoto') <p class="reg-field-error mt-2">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
@@ -375,7 +382,7 @@
 </section>
 
 @error('beneficiaries')
-    <p class="reg-field-error px-1">{{ $message }}</p>
+    <p class="reg-field-error px-1" data-reg-field="beneficiaries">{{ $message }}</p>
 @enderror
 
 @include('livewire.registration.partials.actions', [
