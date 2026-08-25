@@ -482,7 +482,8 @@ it('shows a clear photo picker on the employee document step', function () {
         ->assertSee('اضغط هنا لاختيار الصورة الشخصية', false)
         ->assertSee('اختيار صورة', false)
         ->assertSee(RegistrationUploads::sizeHint(), false)
-        ->assertSee('reg-photo-dropzone', false);
+        ->assertSee('reg-photo-dropzone', false)
+        ->assertDontSee(RegistrationUploads::childrenRequirementsTitle(), false);
 });
 
 it('hides the beneficiary card while its edit form is open', function () {
@@ -576,8 +577,8 @@ it('continues to review when documents are already saved without re-uploading', 
         ->assertSee('بيضاء سادة فقط', false)
         ->assertSee('حجم الوجه في الصورة', false)
         ->assertSee('70% إلى 80%', false)
-        ->assertSee('تعليمات خاصة بالأطفال والرضع', false)
-        ->assertSee('يجب أن يظهر الطفل بمفرده', false)
+        ->assertDontSee('تعليمات خاصة بالأطفال والرضع', false)
+        ->assertDontSee('يجب أن يظهر الطفل بمفرده', false)
         ->assertSee(RegistrationUploads::sizeHint(), false)
         ->assertSee(RegistrationUploads::requirementsNote(), false)
         ->assertSet('hasEmployeePhoto', true)

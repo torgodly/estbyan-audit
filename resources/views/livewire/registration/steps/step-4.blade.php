@@ -205,7 +205,7 @@
 
                 <div>
                     <label class="reg-label">صورة المستفيد <span class="reg-required">*</span></label>
-                    <x-reg-photo-requirements title-id="beneficiary-photo-requirements" class="mt-2 mb-4" />
+                    <x-reg-photo-requirements title-id="beneficiary-photo-requirements" :show-children="true" class="mt-2 mb-4" />
                     @php
                         $beneficiaryPhotoPreview = $this->temporaryUploadPreviewUrl($beneficiaryPhoto);
                         $beneficiaryHasPhoto = (bool) ($beneficiaryPhotoPreview || $beneficiaryExistingPhotoPath);
