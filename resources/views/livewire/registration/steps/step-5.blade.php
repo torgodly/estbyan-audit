@@ -51,7 +51,7 @@
                         </span>
                         <span wire:loading wire:target="employeePhoto">جاري رفع الصورة…</span>
                     </p>
-                    <p class="reg-photo-dropzone-hint">{{ \App\Support\RegistrationUploads::sizeHint() }} — الوجه واضح على خلفية فاتحة</p>
+                    <p class="reg-photo-dropzone-hint">{{ \App\Support\RegistrationUploads::sizeHint() }} — الوجه واضح على خلفية بيضاء</p>
                     <span class="reg-photo-dropzone-cta">
                         {{ $employeeHasPhoto ? 'تغيير الصورة' : 'اختيار صورة' }}
                     </span>

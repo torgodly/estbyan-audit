@@ -12,10 +12,17 @@ use Livewire\Livewire;
 
 it('lists clear arabic portrait photo requirements including the system file limit', function () {
     expect(RegistrationUploads::requirementsTitle())->toBe('تعليمات ومتطلبات الصورة الشخصية')
-        ->and(RegistrationUploads::requirementItems())->toContain(RegistrationUploads::formatRequirement())
-        ->and(RegistrationUploads::formatRequirement())->toContain(RegistrationUploads::maxSizeLabel())
-        ->and(RegistrationUploads::formatRequirement())->toContain('JPG أو JPEG أو PNG')
-        ->and(RegistrationUploads::requirementsNote())->toContain('قد يتم رفضها');
+        ->and(RegistrationUploads::requirementItems())->not->toContain(RegistrationUploads::formatRequirement())
+        ->and(RegistrationUploads::sizeHint())->toContain(RegistrationUploads::maxSizeLabel())
+        ->and(RegistrationUploads::sizeHint())->toContain('JPG أو PNG')
+        ->and(RegistrationUploads::requirementsNote())->toContain('سيتم رفضها')
+        ->and(RegistrationUploads::childrenRequirementsTitle())->toBe('تعليمات خاصة بالأطفال والرضع')
+        ->and(RegistrationUploads::requirementItems())->toContain(
+            'حجم الوجه في الصورة: يجب أن يشغل الوجه ما بين 70% إلى 80% من المساحة الكلية.',
+        )
+        ->and(RegistrationUploads::childrenRequirementItems())->toContain(
+            'الظهور: يجب أن يظهر الطفل بمفرده في الصورة (دون ظهور يدي المُمسك به أو ظهر الكرسي).',
+        );
 });
 
 it('caps registration photo uploads at 10 megabytes', function () {
