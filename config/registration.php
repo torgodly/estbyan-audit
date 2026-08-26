@@ -305,5 +305,6 @@ return [
         'chronic_joint_disease' => 'أمراض المفاصل المزمنة',
         'chronic_neurological_disease' => 'الأمراض العصبية المزمنة',
         'chronic_autoimmune_disease' => 'الأمراض المناعية المزمنة',
+        'hypothyroidism' => 'خمول الغدة الدرقية',
     ],
 ];

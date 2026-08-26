@@ -1087,6 +1087,30 @@ it('opens documents while editing without crashing on a non-previewable temp upl
         ->and($component->instance()->employeeSavedPhotoUrl())->not->toBeNull();
 });
 
+it('includes hypothyroidism among chronic condition options', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1976);
+
+    Employee::factory()->create([
+        'employee_number' => '5120',
+        'national_id' => $nationalId,
+        'full_name' => 'خالد سالم',
+        'workplace' => 'hr_general',
+    ]);
+
+    expect(config('registration.chronic_conditions.hypothyroidism'))->toBe('خمول الغدة الدرقية');
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '5120')
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 3)
+        ->set('hasChronicConditions', true)
+        ->assertSee('خمول الغدة الدرقية', false)
+        ->set('chronicConditions', ['hypothyroidism'])
+        ->assertSet('chronicConditions', ['hypothyroidism']);
+});
+
 it('downloads a reference card for the session registration', function () {
     $employee = Employee::factory()->create([
         'national_id' => LibyanNationalId::generate(),
