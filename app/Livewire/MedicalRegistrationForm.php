@@ -147,6 +147,8 @@ class MedicalRegistrationForm extends Component
 
     public string $approvedMessage = '';
 
+    public ?string $rejectionReason = null;
+
     public function mount(): void
     {
         // Never carry a previous toast into a fresh page load / refresh.
@@ -169,7 +171,7 @@ class MedicalRegistrationForm extends Component
 
     public function updated(mixed $property): void
     {
-        if ($this->submitted || $this->approvedLocked) {
+        if ($this->isFormLocked()) {
             return;
         }
 
@@ -293,15 +295,7 @@ class MedicalRegistrationForm extends Component
             ->first();
 
         if ($existing?->isApproved()) {
-            $this->approvedLocked = true;
-            $this->approvedMessage = 'تم اعتماد طلبك مسبقاً ولا يمكن تعديله.'.($existing->reference_number ? ' رقم المرجع: '.$existing->reference_number : '');
-            $this->referenceNumber = $existing->reference_number ?? '';
-            $this->registrationId = $existing->id;
-            session([
-                'registration_id' => $existing->id,
-                'reference_download_id' => $existing->id,
-                'registration_gate_passed' => true,
-            ]);
+            $this->lockApprovedRegistration($existing);
 
             return;
         }
@@ -334,6 +328,13 @@ class MedicalRegistrationForm extends Component
             if ($existing->isEditing()) {
                 $this->resumeEditingSubmittedRegistration($existing);
                 $this->notify('تم استعادة طلبك — أكمل التعديل ثم أعد الإرسال');
+
+                return;
+            }
+
+            if ($existing->isDeclined()) {
+                session(['reference_download_id' => $existing->id]);
+                $this->startDeclinedRegistration($existing);
 
                 return;
             }
@@ -853,7 +854,7 @@ class MedicalRegistrationForm extends Component
 
     public function submitRegistration(): void
     {
-        if ($this->submitted || $this->approvedLocked) {
+        if ($this->isFormLocked()) {
             return;
         }
 
@@ -908,6 +909,8 @@ class MedicalRegistrationForm extends Component
         $registration = $registration->fresh();
         $this->referenceNumber = $registration->reference_number ?? '';
         $this->submitted = true;
+        $this->rejectionReason = null;
+        $this->toastMessage = null;
         session([
             'registration_id' => $registration->id,
             'reference_download_id' => $registration->id,
@@ -1095,14 +1098,7 @@ class MedicalRegistrationForm extends Component
                 ->find($id);
 
             if ($registration?->isApproved()) {
-                $this->approvedLocked = true;
-                $this->approvedMessage = 'تم اعتماد طلبك مسبقاً ولا يمكن تعديله.'.($registration->reference_number ? ' رقم المرجع: '.$registration->reference_number : '');
-                $this->referenceNumber = $registration->reference_number ?? '';
-                $this->registrationId = $registration->id;
-                $this->verifiedFullName = $registration->full_name;
-                $this->fullName = $registration->full_name;
-                $this->nationalId = $registration->national_id;
-                $this->employeeNumber = $registration->employee_number;
+                $this->lockApprovedRegistration($registration);
 
                 return;
             }
@@ -1116,6 +1112,13 @@ class MedicalRegistrationForm extends Component
 
             if ($registration?->isEditing()) {
                 $this->resumeEditingSubmittedRegistration($registration);
+
+                return;
+            }
+
+            if ($registration?->isDeclined()) {
+                $this->loadRegistration($registration);
+                $this->startDeclinedRegistration($registration);
 
                 return;
             }
@@ -1309,6 +1312,14 @@ class MedicalRegistrationForm extends Component
 
         $this->hasFamilyDocument = (bool) $registration->family_status_document_path;
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
+        $this->rejectionReason = $this->rejectionReasonFor($registration);
+
+        if ($registration->isDeclined()) {
+            $this->step = 2;
+            $this->identityLocked = true;
+
+            return;
+        }
 
         $resumeStep = (int) ($registration->current_step ?: 0);
 
@@ -1355,7 +1366,7 @@ class MedicalRegistrationForm extends Component
             'beneficiaryPhoto', 'beneficiaryExistingPhotoPath', 'editingBeneficiaryIndex',
             'familyStatusDocument', 'employeePhoto', 'submitted', 'referenceNumber',
             'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
-            'approvedLocked', 'approvedMessage',
+            'approvedLocked', 'approvedMessage', 'rejectionReason',
         ]);
 
         $this->step = 1;
@@ -1662,6 +1673,21 @@ class MedicalRegistrationForm extends Component
         }
     }
 
+    protected function startDeclinedRegistration(MedicalRegistration $registration): void
+    {
+        $this->submitted = false;
+        $this->identityLocked = true;
+        $this->hasSavedDraft = false;
+        $this->rejectionReason = $this->rejectionReasonFor($registration);
+        $this->goToStep(2);
+        session([
+            'registration_id' => $registration->id,
+            'reference_download_id' => $registration->id,
+            'registration_gate_passed' => true,
+        ]);
+        session()->forget('registration_editing');
+    }
+
     protected function resumeEditingSubmittedRegistration(MedicalRegistration $registration): void
     {
         $this->loadRegistration($registration->loadMissing('beneficiaries'));
@@ -1677,7 +1703,57 @@ class MedicalRegistrationForm extends Component
 
     protected function isFormLocked(): bool
     {
-        return $this->submitted || $this->approvedLocked;
+        if ($this->submitted || $this->approvedLocked) {
+            return true;
+        }
+
+        $registration = $this->registration();
+
+        return $registration !== null && ! $registration->isEditableByEmployee();
+    }
+
+    protected function lockApprovedRegistration(MedicalRegistration $registration): void
+    {
+        $this->approvedLocked = true;
+        $this->approvedMessage = $this->approvedLockMessage($registration);
+        $this->referenceNumber = $registration->reference_number ?? '';
+        $this->registrationId = $registration->id;
+        $this->verifiedFullName = $registration->full_name;
+        $this->fullName = $registration->full_name;
+        $this->nationalId = $registration->national_id;
+        $this->employeeNumber = $registration->employee_number;
+        $this->step = 1;
+        $this->submitted = false;
+        $this->identityLocked = false;
+        $this->rejectionReason = null;
+
+        session([
+            'registration_id' => $registration->id,
+            'reference_download_id' => $registration->id,
+            'registration_gate_passed' => true,
+        ]);
+    }
+
+    protected function approvedLockMessage(MedicalRegistration $registration): string
+    {
+        $message = 'تم قبول استبيانك من إدارة الديوان. أنت بانتظار استكمال باقي الإجراءات، ولا يمكن تعديل الاستبيان.';
+
+        if (filled($registration->reference_number)) {
+            $message .= ' رقم المرجع: '.$registration->reference_number;
+        }
+
+        return $message;
+    }
+
+    protected function rejectionReasonFor(MedicalRegistration $registration): ?string
+    {
+        if (! $registration->isDeclined()) {
+            return null;
+        }
+
+        $note = trim((string) $registration->review_note);
+
+        return $note !== '' ? $note : 'لم يُذكر سبب الرفض.';
     }
 
     /**
