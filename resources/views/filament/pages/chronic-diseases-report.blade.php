@@ -1,7 +1,7 @@
 @php
     $report = $this->report;
     $maxTotal = collect($report['conditions'])->max('total') ?: 1;
-    $conditionsWithPeople = collect($report['conditions'])->where('total', '>', 0)->values();
+    $hasCases = collect($report['conditions'])->contains(fn (array $condition): bool => $condition['total'] > 0);
 @endphp
 
 <x-filament-panels::page>
@@ -38,115 +38,49 @@
             <section class="hr-panel">
                 <div class="hr-panel__head">
                     <h3 class="hr-panel__title">توزيع الأمراض المزمنة</h3>
-                    <span class="hr-panel__meta">{{ count($report['conditions']) }} مرضاً</span>
+                    <span class="hr-panel__meta">النسبة من إجمالي المسجّلين ({{ $report['registered_people'] }})</span>
                 </div>
                 <div class="hr-panel__body">
-                    <div class="hr-report-table-wrap">
-                        <table class="hr-med-table hr-report-table">
-                            <thead>
-                                <tr>
-                                    <th>المرض</th>
-                                    <th>موظفون</th>
-                                    <th>عائلة</th>
-                                    <th>الإجمالي</th>
-                                    <th>النسبة</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($report['conditions'] as $condition)
-                                    @php
-                                        $share = $report['total_with_chronic'] > 0
-                                            ? round(($condition['total'] / $report['total_with_chronic']) * 100)
-                                            : 0;
-                                        $bar = (int) round(($condition['total'] / $maxTotal) * 100);
-                                    @endphp
+                    @if (! $hasCases)
+                        <p class="hr-report-empty">لا توجد أمراض مزمنة مسجّلة حتى الآن.</p>
+                    @else
+                        <div class="hr-report-table-wrap">
+                            <table class="hr-med-table hr-report-table">
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <div class="hr-report-disease">
-                                                <strong>{{ $condition['label'] }}</strong>
-                                                <span class="hr-report-bar" aria-hidden="true">
-                                                    <span class="hr-report-bar__fill" style="width: {{ $bar }}%"></span>
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td>{{ $condition['employees'] }}</td>
-                                        <td>{{ $condition['family'] }}</td>
-                                        <td>{{ $condition['total'] }}</td>
-                                        <td>{{ $share }}%</td>
+                                        <th>المرض</th>
+                                        <th>موظفون</th>
+                                        <th>عائلة</th>
+                                        <th>الإجمالي</th>
+                                        <th>من المسجّلين</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    @foreach ($report['conditions'] as $condition)
+                                        @php
+                                            $bar = (int) round(($condition['total'] / $maxTotal) * 100);
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <div class="hr-report-disease">
+                                                    <strong>{{ $condition['label'] }}</strong>
+                                                    <span class="hr-report-bar" aria-hidden="true">
+                                                        <span class="hr-report-bar__fill" style="width: {{ $bar }}%"></span>
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td>{{ $condition['employees'] }}</td>
+                                            <td>{{ $condition['family'] }}</td>
+                                            <td>{{ $condition['total'] }}</td>
+                                            <td>{{ $condition['share'] }}%</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
                 </div>
             </section>
-
-            @if ($conditionsWithPeople->isEmpty() && $report['unspecified'] === [])
-                <section class="hr-panel">
-                    <div class="hr-panel__body">
-                        <p class="hr-report-empty">لا توجد أمراض مزمنة مسجّلة حتى الآن.</p>
-                    </div>
-                </section>
-            @endif
-
-            @foreach ($conditionsWithPeople as $condition)
-                <section class="hr-panel">
-                    <div class="hr-panel__head">
-                        <h3 class="hr-panel__title">{{ $condition['label'] }}</h3>
-                        <span class="hr-panel__meta">{{ $condition['total'] }} حالة · {{ $condition['employees'] }} موظف · {{ $condition['family'] }} مستفيد</span>
-                    </div>
-                    <div class="hr-panel__body">
-                        <ul class="hr-report-people">
-                            @foreach ($condition['people'] as $person)
-                                <li>
-                                    <a href="{{ $person['url'] }}" class="hr-report-person">
-                                        <div class="min-w-0">
-                                            <p class="hr-report-person__name">{{ $person['name'] }}</p>
-                                            <p class="hr-report-person__detail">{{ $person['detail'] }}</p>
-                                        </div>
-                                        <div class="hr-chips" style="margin-bottom: 0;">
-                                            <span class="hr-chip">{{ $person['kind'] }}</span>
-                                            @if (filled($person['reference']))
-                                                <span class="hr-chip">{{ $person['reference'] }}</span>
-                                            @endif
-                                            <span class="hr-chip">{{ $person['status'] }}</span>
-                                        </div>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </section>
-            @endforeach
-
-            @if ($report['unspecified'] !== [])
-                <section class="hr-panel">
-                    <div class="hr-panel__head">
-                        <h3 class="hr-panel__title">مرض مزمن دون تحديد النوع</h3>
-                        <span class="hr-panel__meta">{{ $report['unspecified_count'] }} حالة</span>
-                    </div>
-                    <div class="hr-panel__body">
-                        <ul class="hr-report-people">
-                            @foreach ($report['unspecified'] as $person)
-                                <li>
-                                    <a href="{{ $person['url'] }}" class="hr-report-person">
-                                        <div class="min-w-0">
-                                            <p class="hr-report-person__name">{{ $person['name'] }}</p>
-                                            <p class="hr-report-person__detail">{{ $person['detail'] }}</p>
-                                        </div>
-                                        <div class="hr-chips" style="margin-bottom: 0;">
-                                            <span class="hr-chip">{{ $person['kind'] }}</span>
-                                            @if (filled($person['reference']))
-                                                <span class="hr-chip">{{ $person['reference'] }}</span>
-                                            @endif
-                                        </div>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </section>
-            @endif
         </div>
     </div>
 </x-filament-panels::page>

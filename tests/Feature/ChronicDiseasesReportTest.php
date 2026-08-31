@@ -54,8 +54,9 @@ it('summarizes chronic diseases for employees and family members and ignores dra
         ->and($byKey['heart_disease']['family'])->toBe(1)
         ->and($byKey['cancer']['total'])->toBe(0)
         ->and($byKey['hypothyroidism']['label'])->toBe('خمول الغدة الدرقية')
-        ->and(collect($byKey['diabetes']['people'])->pluck('name'))->toContain('أحمد السكري')
-        ->and(collect($byKey['heart_disease']['people'])->pluck('name'))->toContain('منى القلب');
+        ->and($report['registered_people'])->toBe(3)
+        ->and($byKey['diabetes']['share'])->toBe(33)
+        ->and($byKey['heart_disease']['share'])->toBe(33);
 });
 
 it('renders the chronic diseases report page for admins', function () {
@@ -82,10 +83,11 @@ it('renders the chronic diseases report page for admins', function () {
         ->assertSee('موظفون بمرض مزمن')
         ->assertSee('أفراد عائلة بمرض مزمن')
         ->assertSee('توزيع الأمراض المزمنة')
+        ->assertSee('من المسجّلين')
         ->assertSee('السكري')
         ->assertSee('خمول الغدة الدرقية')
         ->assertSee('الربو')
-        ->assertSee('ليلى الربو')
-        ->assertSee('عمر الكلى')
-        ->assertSee('أمراض الكلى المزمنة');
+        ->assertSee('أمراض الكلى المزمنة')
+        ->assertDontSee('ليلى الربو')
+        ->assertDontSee('عمر الكلى');
 });
