@@ -809,6 +809,10 @@
     white-space: nowrap;
 }
 
+.hr-report-table td .hr-report-share {
+    white-space: normal;
+}
+
 .hr-report-table th:first-child,
 .hr-report-table td:first-child {
     width: 40%;
@@ -833,6 +837,21 @@
     height: 100%;
     border-radius: inherit;
     background: var(--hr-teal);
+}
+
+.hr-report-count {
+    display: block;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--hr-ink);
+}
+
+.hr-report-share {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--hr-muted);
 }
 
 .hr-report-empty {

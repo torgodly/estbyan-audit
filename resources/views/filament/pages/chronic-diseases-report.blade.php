@@ -38,7 +38,7 @@
             <section class="hr-panel">
                 <div class="hr-panel__head">
                     <h3 class="hr-panel__title">توزيع الأمراض المزمنة</h3>
-                    <span class="hr-panel__meta">النسبة من إجمالي المسجّلين ({{ $report['registered_people'] }})</span>
+                    <span class="hr-panel__meta">نسبة الموظفين من الموظفين، ونسبة العائلة من العائلة، والجميع من الموظفين والعائلة معاً ({{ $report['registered_people'] }})</span>
                 </div>
                 <div class="hr-panel__body">
                     @if (! $hasCases)
@@ -51,8 +51,7 @@
                                         <th>المرض</th>
                                         <th>موظفون</th>
                                         <th>عائلة</th>
-                                        <th>الإجمالي</th>
-                                        <th>من المسجّلين</th>
+                                        <th>الجميع</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -69,10 +68,18 @@
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td>{{ $condition['employees'] }}</td>
-                                            <td>{{ $condition['family'] }}</td>
-                                            <td>{{ $condition['total'] }}</td>
-                                            <td>{{ $condition['share'] }}%</td>
+                                            <td>
+                                                <span class="hr-report-count">{{ $condition['employees'] }}</span>
+                                                <span class="hr-report-share">{{ number_format($condition['employee_share'], 1) }}% من الموظفين</span>
+                                            </td>
+                                            <td>
+                                                <span class="hr-report-count">{{ $condition['family'] }}</span>
+                                                <span class="hr-report-share">{{ number_format($condition['family_share'], 1) }}% من العائلة</span>
+                                            </td>
+                                            <td>
+                                                <span class="hr-report-count">{{ $condition['total'] }}</span>
+                                                <span class="hr-report-share">{{ number_format($condition['share'], 1) }}% من الجميع</span>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>

@@ -21,7 +21,9 @@ class ChronicDiseasesReport
      *         employees: int,
      *         family: int,
      *         total: int,
-     *         share: int
+     *         employee_share: float,
+     *         family_share: float,
+     *         share: float
      *     }>
      * }
      */
@@ -45,7 +47,9 @@ class ChronicDiseasesReport
                 'employees' => 0,
                 'family' => 0,
                 'total' => 0,
-                'share' => 0,
+                'employee_share' => 0.0,
+                'family_share' => 0.0,
+                'share' => 0.0,
             ];
         }
 
@@ -83,16 +87,17 @@ class ChronicDiseasesReport
             }
         }
 
-        $registeredPeople = $registrations->count() + $familyMembers;
+        $registeredEmployees = $registrations->count();
+        $registeredPeople = $registeredEmployees + $familyMembers;
 
         foreach ($buckets as $key => $bucket) {
-            $buckets[$key]['share'] = $registeredPeople > 0
-                ? (int) round(($bucket['total'] / $registeredPeople) * 100)
-                : 0;
+            $buckets[$key]['employee_share'] = self::share($bucket['employees'], $registeredEmployees);
+            $buckets[$key]['family_share'] = self::share($bucket['family'], $familyMembers);
+            $buckets[$key]['share'] = self::share($bucket['total'], $registeredPeople);
         }
 
         return [
-            'registered_employees' => $registrations->count(),
+            'registered_employees' => $registeredEmployees,
             'registered_people' => $registeredPeople,
             'employees_with_chronic' => $employeesWithChronic,
             'family_members' => $familyMembers,
@@ -110,5 +115,14 @@ class ChronicDiseasesReport
     protected static function sanitize(?array $conditions, array $allowed): array
     {
         return array_values(array_intersect($conditions ?? [], $allowed));
+    }
+
+    protected static function share(int $part, int $whole): float
+    {
+        if ($whole === 0) {
+            return 0.0;
+        }
+
+        return round(($part / $whole) * 100, 1);
     }
 }
