@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Employee;
+use App\Support\EmployeeRosterSpreadsheet;
 use App\Support\TestEmployees;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -95,6 +96,7 @@ class ImportEmployeesCommand extends Command
                 Employee::query()
                     ->whereNotIn('employee_number', $importedNumbers)
                     ->whereNotIn('employee_number', TestEmployees::employeeNumbers())
+                    ->whereNotIn('employee_number', EmployeeRosterSpreadsheet::additionalEmployeeNumbers())
                     ->update(['is_active' => false]);
             }
         });

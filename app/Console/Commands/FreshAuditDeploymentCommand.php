@@ -68,6 +68,12 @@ class FreshAuditDeploymentCommand extends Command
             if ($exitCode !== self::SUCCESS) {
                 return $exitCode;
             }
+
+            $exitCode = Artisan::call('employees:import-additional', [], $this->output);
+
+            if ($exitCode !== self::SUCCESS) {
+                return $exitCode;
+            }
         }
 
         $this->components->success('Libyan Audit Bureau deployment data is ready.');

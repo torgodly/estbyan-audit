@@ -21,6 +21,13 @@ class EmployeeSeeder extends Seeder
 
         Artisan::call('employees:import', ['path' => $path], $this->command?->getOutput());
 
+        $additionalPath = database_path('data/additional-employees.xlsx');
+
+        if (is_file($additionalPath)) {
+            $this->command?->info('Adding extra employees from database/data/additional-employees.xlsx …');
+            Artisan::call('employees:import-additional', ['path' => $additionalPath], $this->command?->getOutput());
+        }
+
         $this->command?->newLine();
     }
 }
