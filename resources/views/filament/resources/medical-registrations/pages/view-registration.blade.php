@@ -180,6 +180,7 @@
                             @foreach ([
                                 'تاريخ الميلاد' => $registration->date_of_birth?->format('Y-m-d') ?: '—',
                                 'الجنس' => $registration->gender?->label() ?? '—',
+                                'فصيلة الدم' => $registration->blood_type?->symbol() ?? '—',
                                 'الحالة الاجتماعية' => $registration->marital_status?->label() ?? '—',
                                 'الهاتف' => $registration->phone ?: '—',
                                 'واتساب' => $registration->whatsapp ?: '—',

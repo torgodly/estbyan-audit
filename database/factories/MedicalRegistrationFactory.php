@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\BloodType;
 use App\Enums\RegistrationStatus;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
@@ -26,6 +27,7 @@ class MedicalRegistrationFactory extends Factory
             'current_step' => 2,
             'consent_at' => now(),
             'date_of_birth' => '1990-01-01',
+            'blood_type' => BloodType::APositive,
         ];
     }
 

@@ -65,25 +65,36 @@
             </div>
         </div>
 
-        <div>
-            <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
-            <select wire:model.live="maritalStatus" data-reg-field="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
-                <option value="single">أعزب / عزباء</option>
-                <option value="married">متزوج / متزوجة</option>
-            </select>
-            <p class="mt-1 text-xs text-slate-400">
-                @if ($maritalStatus === 'married')
-                    @if ($gender === 'female')
-                        المستفيدون يُضافون لاحقاً: زوج واحد، وأبناء، وأب واحد، وأم واحدة
-                    @else
-                        المستفيدون يُضافون لاحقاً: حتى 4 زوجات، وأبناء، وأب واحد، وأم واحدة
-                    @endif
-                @else
-                    المستفيدون يُضافون لاحقاً: أب واحد وأم واحدة
-                @endif
-            </p>
-            @error('maritalStatus') <p class="reg-field-error">{{ $message }}</p> @enderror
-        </div>
+            <div class="reg-grid-2">
+                <div>
+                    <label class="reg-label">فصيلة الدم <span class="reg-required">*</span></label>
+                    <select wire:model.live="bloodType" data-reg-field="bloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('bloodType')])>
+                        @foreach (\App\Enums\BloodType::cases() as $blood)
+                            <option value="{{ $blood->value }}">{{ $blood->label() }}</option>
+                        @endforeach
+                    </select>
+                    @error('bloodType') <p class="reg-field-error">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
+                    <select wire:model.live="maritalStatus" data-reg-field="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
+                        <option value="single">أعزب / عزباء</option>
+                        <option value="married">متزوج / متزوجة</option>
+                    </select>
+                    <p class="mt-1 text-xs text-slate-400">
+                        @if ($maritalStatus === 'married')
+                            @if ($gender === 'female')
+                                المستفيدون يُضافون لاحقاً: زوج واحد، وأبناء، وأب واحد، وأم واحدة
+                            @else
+                                المستفيدون يُضافون لاحقاً: حتى 4 زوجات، وأبناء، وأب واحد، وأم واحدة
+                            @endif
+                        @else
+                            المستفيدون يُضافون لاحقاً: أب واحد وأم واحدة
+                        @endif
+                    </p>
+                    @error('maritalStatus') <p class="reg-field-error">{{ $message }}</p> @enderror
+                </div>
+            </div>
     </div>
 
     <div class="mt-8">

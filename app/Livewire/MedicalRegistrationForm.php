@@ -54,6 +54,8 @@ class MedicalRegistrationForm extends Component
 
     public string $gender = 'male';
 
+    public string $bloodType = 'a_positive';
+
     public string $maritalStatus = 'married';
 
     public string $beneficiariesCount = '';
@@ -400,6 +402,7 @@ class MedicalRegistrationForm extends Component
             ],
             'workplace' => ['required', Rule::in(array_keys(WorkplaceOptions::options($this->workplace)))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
+            'bloodType' => ['required', Rule::in(array_map(fn (BloodType $b) => $b->value, BloodType::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
             'phone' => ['required', 'string', 'size:10', LibyanPhoneNumber::RULE],
             'whatsapp' => ['nullable', 'string', 'size:10', LibyanPhoneNumber::RULE],
@@ -414,6 +417,8 @@ class MedicalRegistrationForm extends Component
             'workplace.in' => 'مكان العمل المحدد غير صالح',
             'gender.required' => 'الجنس مطلوب',
             'gender.in' => 'قيمة الجنس غير صالحة',
+            'bloodType.required' => 'فصيلة الدم مطلوبة',
+            'bloodType.in' => 'فصيلة الدم المحددة غير صالحة',
             'maritalStatus.required' => 'الحالة الاجتماعية مطلوبة',
             'maritalStatus.in' => 'الحالة الاجتماعية المحددة غير صالحة',
             'phone.required' => 'رقم الهاتف مطلوب',
@@ -1155,7 +1160,7 @@ class MedicalRegistrationForm extends Component
     protected function isAutoPersistField(string $property): bool
     {
         return in_array($property, [
-            'dateOfBirth', 'workplace', 'gender', 'maritalStatus',
+            'dateOfBirth', 'workplace', 'gender', 'bloodType', 'maritalStatus',
             'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -1183,6 +1188,7 @@ class MedicalRegistrationForm extends Component
             'workplace' => $this->workplace ?: null,
             'job_title' => 'employee',
             'gender' => $this->gender ?: null,
+            'blood_type' => $this->bloodType ?: null,
             'marital_status' => $this->maritalStatus ?: null,
             'beneficiaries_count' => count($this->beneficiaries),
             'phone' => $this->phone ?: null,
@@ -1290,6 +1296,7 @@ class MedicalRegistrationForm extends Component
         $this->workplace = WorkplaceOptions::sanitizeKey($registration->workplace) ?? '';
         $this->jobTitle = 'employee';
         $this->gender = $registration->gender?->value ?? 'male';
+        $this->bloodType = $registration->blood_type?->value ?? 'a_positive';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
         $this->beneficiariesCount = (string) $registration->beneficiaries->count();
         $this->phone = $registration->phone ?? '';
@@ -1353,7 +1360,7 @@ class MedicalRegistrationForm extends Component
     {
         $this->reset([
             'step', 'registrationId', 'fullName', 'employeeNumber', 'nationalId', 'dateOfBirth', 'consent',
-            'verifiedFullName', 'workplace', 'jobTitle', 'gender', 'maritalStatus',
+            'verifiedFullName', 'workplace', 'jobTitle', 'gender', 'bloodType', 'maritalStatus',
             'beneficiariesCount', 'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -1372,6 +1379,7 @@ class MedicalRegistrationForm extends Component
         $this->step = 1;
         $this->jobTitle = 'employee';
         $this->gender = 'male';
+        $this->bloodType = 'a_positive';
         $this->maritalStatus = 'married';
         $this->beneficiaryRelationship = BeneficiaryRelationship::Spouse->value;
         $this->beneficiaryIsLibyan = true;
@@ -1946,6 +1954,7 @@ class MedicalRegistrationForm extends Component
             'workplace' => 'مكان العمل',
             'jobTitle' => 'الصفة',
             'gender' => 'الجنس',
+            'bloodType' => 'فصيلة الدم',
             'maritalStatus' => 'الحالة الاجتماعية',
             'beneficiariesCount' => 'عدد المستفيدين',
             'phone' => 'رقم الهاتف',

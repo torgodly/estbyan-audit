@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BloodType;
 use App\Enums\RegistrationStatus;
 use App\Filament\Resources\MedicalRegistrations\Pages\ViewMedicalRegistration;
 use App\Models\Beneficiary;
@@ -87,6 +88,7 @@ it('renders the custom registration dossier with key sections', function () {
     $registration = MedicalRegistration::factory()->submitted()->create([
         'full_name' => 'أحمد علي المراجعة',
         'phone' => '0910000000',
+        'blood_type' => BloodType::OPositive,
         'has_chronic_conditions' => true,
         'chronic_conditions' => ['diabetes'],
         'family_status_document_path' => null,
@@ -104,6 +106,8 @@ it('renders the custom registration dossier with key sections', function () {
         ->assertSuccessful()
         ->assertSee('أحمد علي المراجعة')
         ->assertSee($registration->reference_number)
+        ->assertSee('فصيلة الدم')
+        ->assertSee('O+')
         ->assertSee('السجل الطبي للموظف')
         ->assertSee('هل يعاني من أمراض مزمنة؟')
         ->assertSee('اضغط لعرض التفاصيل المحددة')

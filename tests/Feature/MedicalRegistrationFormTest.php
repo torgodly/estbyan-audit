@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BloodType;
 use App\Enums\Gender;
 use App\Enums\RegistrationStatus;
 use App\Livewire\MedicalRegistrationForm;
@@ -345,6 +346,52 @@ it('restores registration after refresh simulation', function () {
         ->assertSet('verifiedFullName', 'سارة علي')
         ->assertSet('workplace', 'tripoli')
         ->assertSet('jobTitle', 'employee');
+});
+
+it('requires and stores the employee blood type', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1980);
+
+    Employee::factory()->create([
+        'employee_number' => '3208',
+        'national_id' => $nationalId,
+        'full_name' => 'يوسف علي',
+        'workplace' => 'hr_general',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '3208')
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('workplace', 'hr_general')
+        ->set('dateOfBirth', '1980-01-01')
+        ->set('bloodType', '')
+        ->set('city', 'tripoli')
+        ->set('address', 'طرابلس')
+        ->set('phone', '0912345678')
+        ->call('saveEmployeeDetails')
+        ->assertHasErrors(['bloodType']);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '3208')
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('workplace', 'hr_general')
+        ->set('dateOfBirth', '1980-01-01')
+        ->set('bloodType', 'o_positive')
+        ->set('city', 'tripoli')
+        ->set('address', 'طرابلس')
+        ->set('phone', '0912345678')
+        ->call('saveEmployeeDetails')
+        ->assertHasNoErrors();
+
+    $registration = MedicalRegistration::query()->where('employee_number', '3208')->first();
+
+    expect($registration?->blood_type)->toBe(BloodType::OPositive);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->assertSet('bloodType', 'o_positive');
 });
 
 it('requires date of birth year to match national id', function () {

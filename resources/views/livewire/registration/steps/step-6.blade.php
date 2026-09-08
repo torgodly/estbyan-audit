@@ -44,6 +44,10 @@
                 <dd>{{ $genderLabel }}</dd>
             </div>
             <div class="reg-report-item">
+                <dt>فصيلة الدم</dt>
+                <dd dir="ltr">{{ \App\Enums\BloodType::tryFrom($bloodType)?->symbol() ?? '—' }}</dd>
+            </div>
+            <div class="reg-report-item">
                 <dt>الحالة الاجتماعية</dt>
                 <dd>{{ $maritalLabel }}</dd>
             </div>

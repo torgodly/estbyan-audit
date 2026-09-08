@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BloodType;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
@@ -31,6 +32,7 @@ use Illuminate\Support\Str;
     'workplace',
     'job_title',
     'gender',
+    'blood_type',
     'marital_status',
     'beneficiaries_count',
     'phone',
@@ -63,6 +65,7 @@ class MedicalRegistration extends Model
             'reviewed_at' => 'datetime',
             'status' => RegistrationStatus::class,
             'gender' => Gender::class,
+            'blood_type' => BloodType::class,
             'marital_status' => MaritalStatus::class,
             'has_chronic_conditions' => 'boolean',
             'chronic_conditions' => 'array',

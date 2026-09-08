@@ -165,6 +165,7 @@ return [
     'attributes' => [
         'address' => 'العنوان السكني',
         'beneficiariesCount' => 'عدد المستفيدين',
+        'bloodType' => 'فصيلة الدم',
         'beneficiaryBloodType' => 'فصيلة دم المستفيد',
         'beneficiaryChronicConditions' => 'الأمراض المزمنة للمستفيد',
         'beneficiaryDateOfBirth' => 'تاريخ ميلاد المستفيد',
