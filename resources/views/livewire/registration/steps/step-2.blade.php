@@ -69,6 +69,7 @@
                 <div>
                     <label class="reg-label">فصيلة الدم <span class="reg-required">*</span></label>
                     <select wire:model.live="bloodType" data-reg-field="bloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('bloodType')])>
+                        <option value="">— اختر فصيلة الدم —</option>
                         @foreach (\App\Enums\BloodType::cases() as $blood)
                             <option value="{{ $blood->value }}">{{ $blood->label() }}</option>
                         @endforeach

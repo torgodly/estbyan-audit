@@ -54,7 +54,7 @@ class MedicalRegistrationForm extends Component
 
     public string $gender = 'male';
 
-    public string $bloodType = 'a_positive';
+    public string $bloodType = '';
 
     public string $maritalStatus = 'married';
 
@@ -1296,7 +1296,7 @@ class MedicalRegistrationForm extends Component
         $this->workplace = WorkplaceOptions::sanitizeKey($registration->workplace) ?? '';
         $this->jobTitle = 'employee';
         $this->gender = $registration->gender?->value ?? 'male';
-        $this->bloodType = $registration->blood_type?->value ?? 'a_positive';
+        $this->bloodType = $registration->blood_type?->value ?? '';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
         $this->beneficiariesCount = (string) $registration->beneficiaries->count();
         $this->phone = $registration->phone ?? '';
@@ -1379,7 +1379,7 @@ class MedicalRegistrationForm extends Component
         $this->step = 1;
         $this->jobTitle = 'employee';
         $this->gender = 'male';
-        $this->bloodType = 'a_positive';
+        $this->bloodType = '';
         $this->maritalStatus = 'married';
         $this->beneficiaryRelationship = BeneficiaryRelationship::Spouse->value;
         $this->beneficiaryIsLibyan = true;
