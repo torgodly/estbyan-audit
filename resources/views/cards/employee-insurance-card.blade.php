@@ -130,26 +130,7 @@
         <div @class(['insurance-card-frame' => $preview])>
             <section class="employee-id-card employee-id-card--front" data-card-person="{{ $card->personKey }}">
                 <div class="employee-id-card__canvas">
-                    @if ($printPack)
-                        <img
-                            class="employee-id-card__art"
-                            src="{{ $card->frontSvgDataUri() }}"
-                            alt=""
-                            width="972"
-                            height="602"
-                        >
-                        @if ($card->photoDataUri)
-                            <img
-                                class="employee-id-card__photo"
-                                src="{{ $card->photoDataUri }}"
-                                alt=""
-                                width="304"
-                                height="368"
-                            >
-                        @endif
-                    @else
-                        {!! $card->frontSvg($embedAssets) !!}
-                    @endif
+                    {!! $card->frontSvg($embedAssets) !!}
                 </div>
             </section>
         </div>

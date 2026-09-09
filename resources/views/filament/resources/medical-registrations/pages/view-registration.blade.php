@@ -72,7 +72,7 @@
     @assets
         <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
         <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
-        <script src="{{ asset('js/insurance-cards-pdf.js') }}"></script>
+        <script src="{{ asset('js/insurance-cards-pdf.js') }}?v=card-5"></script>
     @endassets
 @endif
 
@@ -472,11 +472,12 @@
                         id="insurance-cards-print"
                         class="insurance-cards-print"
                         data-filename="{{ \App\Support\EmployeeInsuranceCard::packFilename($registration) }}"
+                        data-font-url="{{ $insuranceCards->first()?->fontUrl }}"
                         aria-hidden="true"
                     >
                         @include('cards.employee-insurance-card', [
                             'cards' => $insuranceCards,
-                            'embedAssets' => false,
+                            'embedAssets' => true,
                             'preview' => false,
                             'printPack' => true,
                         ])

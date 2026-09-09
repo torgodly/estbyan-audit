@@ -119,7 +119,8 @@ it('embeds the employee photo as a data uri when a file exists', function () {
     $card = EmployeeInsuranceCard::from($registration);
 
     expect($card->photoDataUri)->toStartWith('data:image/png;base64,')
-        ->and(base64_decode(substr($card->photoDataUri, strlen('data:image/png;base64,'))))->toBe($png);
+        ->and(base64_decode(substr($card->photoDataUri, strlen('data:image/png;base64,'))))->toBe($png)
+        ->and($card->frontSvg(embedAssets: false))->toContain($card->photoDataUri);
 
     RegistrationDocuments::disk()->delete($path);
 });
@@ -192,7 +193,7 @@ it('renders somar sans text fields in the printable card view', function () {
         ->toContain('employee-id-card--back');
 });
 
-it('builds a self-contained print image so pdf export does not parse the live svg', function () {
+it('embeds the live vector svg in the print pack', function () {
     $registration = MedicalRegistration::factory()->submitted()->create([
         'full_name' => 'منى العابد',
         'date_of_birth' => '1985-04-15',
@@ -208,13 +209,7 @@ it('builds a self-contained print image so pdf export does not parse the live sv
     ])->render();
 
     expect($html)
-        ->toContain('data:image/svg+xml;base64,')
-        ->toContain('employee-id-card__art')
-        ->not->toContain('<svg ');
-
-    $svg = base64_decode(substr($card->frontSvgDataUri(), strlen('data:image/svg+xml;base64,')));
-
-    expect($svg)
+        ->toContain('<svg ')
         ->toContain('منى العابد')
         ->toContain('1985 / 04 / 15')
         ->toContain('قيادي')
@@ -222,9 +217,7 @@ it('builds a self-contained print image so pdf export does not parse the live sv
         ->not->toContain('>B+</tspan>')
         ->toContain(InsuranceCardNumber::display($registration->employee->card_number))
         ->not->toContain('زكريا علي إبراهيم حميدة')
-        ->not->toContain('href="data:image/');
-
-    expect($html)
+        ->not->toContain('data:image/svg+xml;base64,')
         ->toContain('cards/card-back-aud.png')
         ->toContain('width="1004"')
         ->toContain('height="634"');
@@ -305,36 +298,41 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertHasNoActionErrors();
 });
 
-it('exports insurance cards at print resolution from the on-page print pack', function () {
+it('exports insurance cards at cr80 print size from the on-page print pack', function () {
+    $exporter = (string) file_get_contents(public_path('js/insurance-cards-pdf.js'));
+    $page = (string) file_get_contents(resource_path('views/filament/resources/medical-registrations/pages/view-registration.blade.php'));
+
     expect(public_path('js/insurance-cards-pdf.js'))->toBeFile()
-        ->and(file_get_contents(public_path('js/insurance-cards-pdf.js')))
+        ->and(public_path('js/html2media/html2canvas-pro-script.js'))->toBeFile()
+        ->and($exporter)
         ->toContain('exportInsuranceCards')
         ->toContain('dataset.cardPerson')
-        ->toContain('scale: printScale')
-        ->toContain('printScale = 4')
-        ->toContain("image/png")
+        ->toContain('html2canvas')
+        ->toContain("unit: 'mm'")
         ->toContain('85.6')
-        ->toContain("'NONE'")
-        ->toContain('insurance-cards-print');
+        ->toContain('53.98')
+        ->toContain('PRINT_SCALE = 4')
+        ->toContain('image/jpeg')
+        ->toContain('insurance-cards-print')
+        ->not->toContain('pdf.svg')
+        ->not->toContain('px_scaling')
+        ->and($page)
+        ->toContain('html2canvas-pro-script.js')
+        ->toContain('insurance-cards-pdf.js');
 });
 
 it('ships the audit bureau card artwork', function () {
     $front = public_path('cards/card-front-aud.svg');
     $backSvg = public_path('cards/card-back-aud.svg');
-    $back = public_path('cards/card-back-aud.png');
     $svg = (string) file_get_contents($backSvg);
 
     expect($front)->toBeFile()
         ->and($backSvg)->toBeFile()
-        ->and($back)->toBeFile()
         ->and((string) file_get_contents($front))->toContain('viewBox="0 0 972.22 601.8"')
         ->and($svg)->toContain('fill="#FDFDFD"')
         ->and($svg)->toContain('id="image 2"')
         ->and($svg)->toContain('id="image 3 [Vectorized]"')
-        ->and($svg)->toContain('pattern0_31_750')
-        ->and(substr((string) file_get_contents($back), 0, 8))->toBe("\x89PNG\r\n\x1a\n")
-        ->and(getimagesize($back)[0])->toBe(2008)
-        ->and(getimagesize($back)[1])->toBe(1268);
+        ->and($svg)->toContain('pattern0_31_750');
 });
 
 it('uses a draft pack filename when the request has no reference number', function () {

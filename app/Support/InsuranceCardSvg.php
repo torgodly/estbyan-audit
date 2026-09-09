@@ -59,7 +59,7 @@ final class InsuranceCardSvg
         self::hide($xpath, 'card-blood');
         self::replaceFieldLabels($dom, $xpath);
 
-        self::setPhoto($xpath, $includePhoto ? $card->photoSrc($embedAssets) : null);
+        self::setPhoto($xpath, $includePhoto ? ($card->photoDataUri ?: $card->photoSrc($embedAssets)) : null);
         self::setBarcode($dom, $xpath, $card->barcodeSvg);
         self::embedFont($xpath, $embedAssets ? $card->fontDataUri : $card->fontUrl);
 
