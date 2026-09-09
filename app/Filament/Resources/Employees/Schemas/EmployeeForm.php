@@ -16,7 +16,6 @@ class EmployeeForm
         return $schema
             ->components([
                 Section::make('بيانات الموظف')
-                    ->description('تحديث بيانات أساسية فقط. الاستيراد الجماعي يتم عبر الأمر: php artisan employees:import')
                     ->schema([
                         TextInput::make('full_name')
                             ->label('الاسم الكامل')
@@ -32,6 +31,7 @@ class EmployeeForm
                             ->numeric()
                             ->length(4)
                             ->rule('digits:4')
+                            ->unique(ignoreRecord: true)
                             ->validationMessages([
                                 'required' => 'الرقم التأميني مطلوب',
                                 'digits' => 'الرقم التأميني يجب أن يتكون من 4 أرقام',
@@ -43,6 +43,7 @@ class EmployeeForm
                             ->numeric()
                             ->length(12)
                             ->rule('digits:12')
+                            ->unique(ignoreRecord: true)
                             ->validationMessages([
                                 'required' => 'الرقم الوطني مطلوب',
                                 'digits' => 'الرقم الوطني يجب أن يتكون من 12 رقماً',
