@@ -184,6 +184,31 @@ final readonly class EmployeeInsuranceCard
             return null;
         }
 
-        return 'data:'.RegistrationDocuments::mimeType($path).';base64,'.base64_encode($contents);
+        return self::grayscaleDataUri($contents, RegistrationDocuments::mimeType($path));
+    }
+
+    private static function grayscaleDataUri(string $contents, string $fallbackMime): string
+    {
+        $image = @imagecreatefromstring($contents);
+
+        if ($image === false) {
+            return 'data:'.$fallbackMime.';base64,'.base64_encode($contents);
+        }
+
+        imagepalettetotruecolor($image);
+        imagealphablending($image, true);
+        imagesavealpha($image, true);
+        imagefilter($image, IMG_FILTER_GRAYSCALE);
+
+        ob_start();
+        imagepng($image);
+        $png = (string) ob_get_clean();
+        imagedestroy($image);
+
+        if ($png === '') {
+            return 'data:'.$fallbackMime.';base64,'.base64_encode($contents);
+        }
+
+        return 'data:image/png;base64,'.base64_encode($png);
     }
 }

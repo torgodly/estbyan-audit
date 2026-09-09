@@ -106,9 +106,15 @@ it('includes the employee and each beneficiary in the printable card pack', func
         ->and($cards->pluck('kind')->all())->toBe(['employee', 'beneficiary']);
 });
 
-it('embeds the employee photo as a data uri when a file exists', function () {
+it('embeds the employee photo as a grayscale data uri when a file exists', function () {
+    $source = imagecreatetruecolor(4, 4);
+    imagefilledrectangle($source, 0, 0, 3, 3, imagecolorallocate($source, 220, 30, 40));
+    ob_start();
+    imagepng($source);
+    $png = (string) ob_get_clean();
+    imagedestroy($source);
+
     $path = 'registrations/tests/employee-photo.png';
-    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
 
     RegistrationDocuments::disk()->put($path, $png);
 
@@ -117,14 +123,27 @@ it('embeds the employee photo as a data uri when a file exists', function () {
     ]);
 
     $card = EmployeeInsuranceCard::from($registration);
+    $grayscalePng = base64_decode(substr((string) $card->photoDataUri, strlen('data:image/png;base64,')));
+    $image = imagecreatefromstring((string) $grayscalePng);
 
     expect($card->photoDataUri)->toStartWith('data:image/png;base64,')
-        ->and(base64_decode(substr($card->photoDataUri, strlen('data:image/png;base64,'))))->toBe($png)
+        ->and($grayscalePng)->not->toBe($png)
+        ->and($image)->not->toBeFalse()
         ->and($card->frontSvg())->toContain('feColorMatrix')
         ->and($card->frontSvg())->toContain('type="saturate"')
         ->and($card->frontSvg())->toContain('values="0"')
         ->and($card->frontSvg())->toContain('url(#employee-card-photo-grayscale)');
 
+    $color = imagecolorat($image, 0, 0);
+    $red = ($color >> 16) & 0xFF;
+    $green = ($color >> 8) & 0xFF;
+    $blue = $color & 0xFF;
+
+    expect($red)->toBe($green)
+        ->and($green)->toBe($blue)
+        ->and($red)->not->toBe(220);
+
+    imagedestroy($image);
     RegistrationDocuments::disk()->delete($path);
 });
 
@@ -212,6 +231,7 @@ it('builds a self-contained print image so pdf export does not parse the live sv
     expect($html)
         ->toContain('data:image/svg+xml;base64,')
         ->toContain('employee-id-card__art')
+        ->toContain('filter: grayscale(1)')
         ->not->toContain('<svg ');
 
     $svg = base64_decode(substr($card->frontSvgDataUri(), strlen('data:image/svg+xml;base64,')));

@@ -150,6 +150,7 @@
                                 alt=""
                                 width="304"
                                 height="368"
+                                style="filter: grayscale(1)"
                             >
                         @endif
                     @else
