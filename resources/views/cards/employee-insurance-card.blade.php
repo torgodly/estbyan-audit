@@ -76,6 +76,11 @@
             object-fit: fill;
         }
 
+        .employee-id-card__photo,
+        .employee-id-card__canvas > svg image {
+            filter: grayscale(1);
+        }
+
         .employee-id-card__photo {
             position: absolute;
             left: 595.49px;

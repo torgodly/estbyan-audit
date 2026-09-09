@@ -119,7 +119,11 @@ it('embeds the employee photo as a data uri when a file exists', function () {
     $card = EmployeeInsuranceCard::from($registration);
 
     expect($card->photoDataUri)->toStartWith('data:image/png;base64,')
-        ->and(base64_decode(substr($card->photoDataUri, strlen('data:image/png;base64,'))))->toBe($png);
+        ->and(base64_decode(substr($card->photoDataUri, strlen('data:image/png;base64,'))))->toBe($png)
+        ->and($card->frontSvg())->toContain('feColorMatrix')
+        ->and($card->frontSvg())->toContain('type="saturate"')
+        ->and($card->frontSvg())->toContain('values="0"')
+        ->and($card->frontSvg())->toContain('url(#employee-card-photo-grayscale)');
 
     RegistrationDocuments::disk()->delete($path);
 });
@@ -186,7 +190,8 @@ it('renders somar sans text fields in the printable card view', function () {
         ->toContain('data-card-person="beneficiary-')
         ->toContain('cards/card-back-aud.png')
         ->toContain('width="1004"')
-        ->toContain('employee-id-card--back');
+        ->toContain('employee-id-card--back')
+        ->toContain('filter: grayscale(1)');
 });
 
 it('builds a self-contained print image so pdf export does not parse the live svg', function () {
