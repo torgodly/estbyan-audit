@@ -144,6 +144,8 @@
                         alt=""
                         width="1004"
                         height="634"
+                        loading="lazy"
+                        decoding="async"
                     >
                 </div>
             </section>

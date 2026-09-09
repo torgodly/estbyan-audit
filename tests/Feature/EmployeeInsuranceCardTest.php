@@ -106,7 +106,7 @@ it('includes the employee and each beneficiary in the printable card pack', func
         ->and($cards->pluck('kind')->all())->toBe(['employee', 'beneficiary']);
 });
 
-it('embeds the employee photo as a data uri when a file exists', function () {
+it('keeps employee photos as urls on the request page and can still read the original file', function () {
     $path = 'registrations/tests/employee-photo.png';
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
 
@@ -117,10 +117,14 @@ it('embeds the employee photo as a data uri when a file exists', function () {
     ]);
 
     $card = EmployeeInsuranceCard::from($registration);
+    $embedded = EmployeeInsuranceCard::photoDataUriFromPath($path);
 
-    expect($card->photoDataUri)->toStartWith('data:image/png;base64,')
-        ->and(base64_decode(substr($card->photoDataUri, strlen('data:image/png;base64,'))))->toBe($png)
-        ->and($card->frontSvg(embedAssets: false))->toContain($card->photoDataUri);
+    expect($card->photoDataUri)->toBeNull()
+        ->and($card->photoUrl)->not->toBeNull()
+        ->and($card->photoSrc(false))->toBe($card->photoUrl)
+        ->and($embedded)->toStartWith('data:image/png;base64,')
+        ->and(base64_decode(substr($embedded, strlen('data:image/png;base64,'))))->toBe($png)
+        ->and($card->frontSvg(embedAssets: false))->toContain($card->photoUrl);
 
     RegistrationDocuments::disk()->delete($path);
 });
@@ -280,6 +284,8 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertSee('بطاقات التأمين')
         ->assertSee('employee-insurance-cards--preview', false)
         ->assertSee('insurance-cards-print', false)
+        ->assertDontSee('employee-insurance-cards--print', false)
+        ->assertDontSee('data:font/truetype;base64,', false)
         ->assertSee('insurance-cards-SC26-04444', false)
         ->assertSee('تحميل PDF')
         ->assertSee('طباعة الكل')
@@ -308,6 +314,7 @@ it('exports insurance cards at cr80 print size from the on-page print pack', fun
         ->toContain('exportInsuranceCards')
         ->toContain('dataset.cardPerson')
         ->toContain('html2canvas')
+        ->toContain('collectPrintPages')
         ->toContain("unit: 'mm'")
         ->toContain('85.6')
         ->toContain('53.98')
