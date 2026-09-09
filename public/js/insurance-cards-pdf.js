@@ -5,8 +5,8 @@ async function exportInsuranceCards(output, personKey) {
         throw new Error('Insurance card print root is missing.');
     }
 
-    if (typeof html2media !== 'function') {
-        throw new Error('html2media is not loaded.');
+    if (typeof html2canvas !== 'function' || ! window.jspdf?.jsPDF) {
+        throw new Error('PDF libraries are not loaded.');
     }
 
     await document.fonts.ready;
@@ -22,54 +22,86 @@ async function exportInsuranceCards(output, personKey) {
         });
     }));
 
-    const source = root.querySelector('.employee-insurance-cards') ?? root;
-    const pack = source.cloneNode(true);
+    const pages = [...root.querySelectorAll('.employee-id-card')]
+        .filter((page) => ! personKey || page.dataset.cardPerson === personKey);
 
-    if (personKey) {
-        pack.querySelectorAll('.employee-id-card').forEach((page) => {
-            if (page.dataset.cardPerson !== personKey) {
-                page.remove();
-            }
-        });
-    }
-
-    if (pack.querySelectorAll('.employee-id-card').length === 0) {
+    if (pages.length === 0) {
         throw new Error('No insurance cards match the print selection.');
     }
 
-    const holder = document.createElement('div');
-    holder.setAttribute('aria-hidden', 'true');
-    holder.style.position = 'fixed';
-    holder.style.left = '-12000px';
-    holder.style.top = '0';
-    holder.style.width = '1004px';
-    holder.appendChild(pack);
-    document.body.appendChild(holder);
+    const cardWidthPx = 1004;
+    const cardHeightPx = 634;
+    const cardWidthMm = 85.6;
+    const cardHeightMm = 53.98;
+    const printScale = 4;
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+        unit: 'mm',
+        format: [cardWidthMm, cardHeightMm],
+        orientation: 'landscape',
+        compress: true,
+        hotfixes: ['px_scaling'],
+    });
+
+    for (const [index, page] of pages.entries()) {
+        const canvas = await html2canvas(page, {
+            scale: printScale,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            width: cardWidthPx,
+            height: cardHeightPx,
+            windowWidth: cardWidthPx,
+            windowHeight: cardHeightPx,
+            imageTimeout: 0,
+        });
+
+        if (index > 0) {
+            pdf.addPage([cardWidthMm, cardHeightMm], 'landscape');
+        }
+
+        pdf.addImage(
+            canvas.toDataURL('image/png'),
+            'PNG',
+            0,
+            0,
+            cardWidthMm,
+            cardHeightMm,
+            `card-${index}`,
+            'NONE',
+        );
+    }
 
     const filename = (root.dataset.filename || 'insurance-cards') + '.pdf';
 
-    try {
-        const instance = html2media()
-            .from(pack)
-            .pageBreakMode('class')
-            .selector('.employee-id-card')
-            .enableLinks(false)
-            .format([1004, 634])
-            .orientation('landscape')
-            .margins(0)
-            .overflow('cut')
-            .showPageNumbers(false);
+    if (output === 'print') {
+        const url = URL.createObjectURL(pdf.output('blob'));
+        let frame = document.getElementById('insurance-cards-print-frame');
 
-        if (output === 'print') {
-            await instance.print();
-
-            return;
+        if (! frame) {
+            frame = document.createElement('iframe');
+            frame.id = 'insurance-cards-print-frame';
+            frame.setAttribute('aria-hidden', 'true');
+            frame.style.position = 'fixed';
+            frame.style.right = '0';
+            frame.style.bottom = '0';
+            frame.style.width = '0';
+            frame.style.height = '0';
+            frame.style.border = '0';
+            document.body.appendChild(frame);
         }
 
-        await instance.save(filename);
-    } finally {
-        holder.remove();
+        frame.src = url;
+        frame.onload = () => {
+            frame.contentWindow?.focus();
+            frame.contentWindow?.print();
+        };
+
+        return;
     }
+
+    pdf.save(filename);
 }
 
 window.exportInsuranceCards = exportInsuranceCards;

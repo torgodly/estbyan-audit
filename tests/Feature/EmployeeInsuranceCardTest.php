@@ -305,12 +305,16 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertHasNoActionErrors();
 });
 
-it('exports insurance cards through html2media from the on-page print pack', function () {
+it('exports insurance cards at print resolution from the on-page print pack', function () {
     expect(public_path('js/insurance-cards-pdf.js'))->toBeFile()
         ->and(file_get_contents(public_path('js/insurance-cards-pdf.js')))
         ->toContain('exportInsuranceCards')
         ->toContain('dataset.cardPerson')
-        ->toContain('html2media()')
+        ->toContain('scale: printScale')
+        ->toContain('printScale = 4')
+        ->toContain("image/png")
+        ->toContain('85.6')
+        ->toContain("'NONE'")
         ->toContain('insurance-cards-print');
 });
 
