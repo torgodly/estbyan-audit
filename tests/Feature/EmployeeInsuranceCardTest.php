@@ -29,7 +29,7 @@ it('maps registration identity fields onto the insurance card', function () {
     expect($card->name)->toBe('إبراهيم صالح القدافي')
         ->and($card->reference)->toBe(InsuranceCardNumber::display($cardNumber))
         ->and($card->dateOfBirth)->toBe('1961 / 08 / 02')
-        ->and($card->issuedAt)->toBe('2026 / 09 / 01')
+        ->and($card->issuedAt)->toBe('2026 / 09 / 15')
         ->and($card->jobTitle)->toBe('موظف')
         ->and($card->bloodType)->toBe('O+')
         ->and($card->kind)->toBe('employee')
@@ -46,13 +46,14 @@ it('maps registration identity fields onto the insurance card', function () {
         ->and($card->backArtworkUrl)->toContain('cards/card-back-aud.png');
 });
 
-it('uses the approval date as the card issue date when the request was reviewed', function () {
+it('prints 15 september 2026 as the card issue date for every request', function () {
     $registration = MedicalRegistration::factory()->approved()->create([
         'submitted_at' => '2026-08-20 09:00:00',
         'reviewed_at' => '2026-09-07 14:30:00',
     ]);
 
-    expect(EmployeeInsuranceCard::from($registration)->issuedAt)->toBe('2026 / 09 / 07');
+    expect(EmployeeInsuranceCard::from($registration)->issuedAt)->toBe('2026 / 09 / 15')
+        ->and(EmployeeInsuranceCard::issuedAtFor($registration)->toDateString())->toBe(EmployeeInsuranceCard::ISSUE_DATE);
 });
 
 it('builds a family card with the beneficiary name, blood type, and shared issue date', function () {
@@ -78,7 +79,7 @@ it('builds a family card with the beneficiary name, blood type, and shared issue
     expect($card->name)->toBe('فاطمة محمد علي')
         ->and($card->reference)->toBe(InsuranceCardNumber::display($beneficiary->card_number))
         ->and($card->dateOfBirth)->toBe('1988 / 03 / 14')
-        ->and($card->issuedAt)->toBe('2026 / 09 / 07')
+        ->and($card->issuedAt)->toBe('2026 / 09 / 15')
         ->and($card->jobTitle)->toBe('زوجة')
         ->and($card->bloodType)->toBe('O+')
         ->and($card->kind)->toBe('beneficiary')
@@ -167,7 +168,7 @@ it('renders somar sans text fields in the printable card view', function () {
         ->not->toContain('SC26-00123')
         ->toContain('1985 / 04 / 15')
         ->toContain('2010 / 01 / 02')
-        ->toContain('2026 / 03 / 20')
+        ->toContain('2026 / 09 / 15')
         ->toContain('قيادي')
         ->toContain('ابن')
         ->toContain('رقم البطاقة:')
@@ -243,7 +244,7 @@ it('writes the person fields into the svg text nodes instead of overlaying html'
     expect($svg)
         ->toContain('سالم علي القدافي')
         ->toContain('1977 / 12 / 03')
-        ->toContain('2026 / 04 / 11')
+        ->toContain('2026 / 09 / 15')
         ->toContain('موظف')
         ->toContain('رقم البطاقة:')
         ->toContain('الاسم:')

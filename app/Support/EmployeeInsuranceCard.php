@@ -5,11 +5,14 @@ namespace App\Support;
 use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
 use DateTimeInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
 final readonly class EmployeeInsuranceCard
 {
+    public const ISSUE_DATE = '2026-09-15';
+
     public function __construct(
         public string $name,
         public string $reference,
@@ -99,12 +102,9 @@ final readonly class EmployeeInsuranceCard
         );
     }
 
-    public static function issuedAtFor(MedicalRegistration $registration): DateTimeInterface
+    public static function issuedAtFor(?MedicalRegistration $registration = null): DateTimeInterface
     {
-        return $registration->reviewed_at
-            ?? $registration->submitted_at
-            ?? $registration->created_at
-            ?? now();
+        return Carbon::parse(self::ISSUE_DATE)->startOfDay();
     }
 
     public function filename(): string
