@@ -61,7 +61,10 @@ final class InsuranceCardSvg
 
         self::setPhoto($xpath, $includePhoto ? $card->photoSrc($embedAssets) : null);
         self::setBarcode($dom, $xpath, $card->barcodeSvg);
-        self::embedFont($xpath, $embedAssets ? $card->fontDataUri : $card->fontUrl);
+
+        if ($embedAssets) {
+            self::embedFont($xpath, $card->fontDataUri ?: EmployeeInsuranceCard::fontDataUri());
+        }
 
         $root = $dom->documentElement;
         $root->setAttribute('width', '972.22');
