@@ -12,15 +12,24 @@ final class InsuranceCardSvg
     /**
      * Right edges of the value column, just left of the outlined labels.
      *
-     * @var array<string, array{x: float, y: float, anchor: string}>
+     * @var array<string, array{x: float, y: float, anchor: string, size: string}>
      */
     private const TEXT_LAYOUT = [
-        'card-name' => ['x' => 475.0, 'y' => 196.45, 'anchor' => 'end'],
-        'card-dob' => ['x' => 408.0, 'y' => 249.47, 'anchor' => 'end'],
-        'card-job' => ['x' => 475.0, 'y' => 312.28, 'anchor' => 'end'],
-        'card-blood' => ['x' => 418.0, 'y' => 368.77, 'anchor' => 'end'],
-        'card-issued' => ['x' => 603.6, 'y' => 569.76, 'anchor' => 'start'],
-        'card-number' => ['x' => 180.0, 'y' => 92.0, 'anchor' => 'start'],
+        'card-number' => ['x' => 400.0, 'y' => 198.0, 'anchor' => 'end', 'size' => '32px'],
+        'card-name' => ['x' => 400.0, 'y' => 252.0, 'anchor' => 'end', 'size' => '24px'],
+        'card-dob' => ['x' => 400.0, 'y' => 312.0, 'anchor' => 'end', 'size' => '24px'],
+        'card-job' => ['x' => 400.0, 'y' => 368.0, 'anchor' => 'end', 'size' => '24px'],
+        'card-issued' => ['x' => 603.6, 'y' => 569.76, 'anchor' => 'start', 'size' => '24px'],
+    ];
+
+    /**
+     * @var list<array{text: string, y: float}>
+     */
+    private const FIELD_LABELS = [
+        ['text' => 'رقم البطاقة:', 'y' => 198.0],
+        ['text' => 'الاسم:', 'y' => 252.0],
+        ['text' => 'تاريخ الميلاد:', 'y' => 312.0],
+        ['text' => 'الصفة:', 'y' => 368.0],
     ];
 
     public static function front(EmployeeInsuranceCard $card, bool $embedAssets = true, bool $includePhoto = true): string
@@ -42,12 +51,13 @@ final class InsuranceCardSvg
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('svg', 'http://www.w3.org/2000/svg');
 
+        self::setText($xpath, 'card-number', $card->reference);
         self::setText($xpath, 'card-name', $card->name);
         self::setText($xpath, 'card-dob', $card->dateOfBirth);
         self::setText($xpath, 'card-job', $card->jobTitle);
-        self::setText($xpath, 'card-blood', $card->bloodType);
         self::setText($xpath, 'card-issued', $card->issuedAt);
-        self::setText($xpath, 'card-number', $card->reference);
+        self::hide($xpath, 'card-blood');
+        self::replaceFieldLabels($dom, $xpath);
 
         self::setPhoto($xpath, $includePhoto ? $card->photoSrc($embedAssets) : null);
         self::setBarcode($dom, $xpath, $card->barcodeSvg);
@@ -82,9 +92,73 @@ final class InsuranceCardSvg
         $layout = self::TEXT_LAYOUT[$id];
         $element->setAttribute('text-anchor', $layout['anchor']);
         $element->setAttribute('transform', 'translate('.$layout['x'].' '.$layout['y'].')');
+        $element->setAttribute('font-size', $layout['size']);
+        $element->setAttribute('style', 'font-size: '.$layout['size']);
+
+        if ($element->hasAttribute('class')) {
+            $element->setAttribute('class', (string) preg_replace('/\bcls-9\b/', 'cls-8', $element->getAttribute('class')));
+        }
 
         $tspan = self::firstChildElement($element, 'tspan') ?? $element;
         $tspan->textContent = $value;
+    }
+
+    private static function hide(DOMXPath $xpath, string $id): void
+    {
+        $element = self::element($xpath, $id);
+
+        if (! $element instanceof DOMElement) {
+            return;
+        }
+
+        $element->setAttribute('display', 'none');
+
+        $tspan = self::firstChildElement($element, 'tspan') ?? $element;
+        $tspan->textContent = '';
+    }
+
+    private static function replaceFieldLabels(DOMDocument $dom, DOMXPath $xpath): void
+    {
+        $root = $dom->documentElement;
+
+        if (! $root instanceof DOMElement) {
+            return;
+        }
+
+        $namespace = 'http://www.w3.org/2000/svg';
+        $cover = $dom->createElementNS($namespace, 'rect');
+        $cover->setAttribute('x', '418');
+        $cover->setAttribute('y', '154');
+        $cover->setAttribute('width', '172');
+        $cover->setAttribute('height', '230');
+        $cover->setAttribute('fill', '#ffffff');
+        $root->appendChild($cover);
+
+        foreach (self::FIELD_LABELS as $label) {
+            $text = $dom->createElementNS($namespace, 'text');
+            $text->setAttribute('class', 'cls-8');
+            $text->setAttribute('fill', '#664d15');
+            $text->setAttribute('direction', 'rtl');
+            $text->setAttribute('unicode-bidi', 'isolate');
+            $text->setAttribute('text-anchor', 'start');
+            $text->setAttribute('transform', 'translate(572 '.$label['y'].')');
+            $text->setAttribute('font-size', '24px');
+
+            $tspan = $dom->createElementNS($namespace, 'tspan');
+            $tspan->setAttribute('x', '0');
+            $tspan->setAttribute('y', '0');
+            $tspan->textContent = $label['text'];
+            $text->appendChild($tspan);
+            $root->appendChild($text);
+        }
+
+        foreach (['card-number', 'card-name', 'card-dob', 'card-job'] as $id) {
+            $element = self::element($xpath, $id);
+
+            if ($element instanceof DOMElement) {
+                $root->appendChild($element);
+            }
+        }
     }
 
     private static function setPhoto(DOMXPath $xpath, ?string $src): void
