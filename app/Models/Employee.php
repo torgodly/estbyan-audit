@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Enums\RegistrationStatus;
+use App\Models\Concerns\HasInsuranceCardPrint;
+use App\Services\InsuranceCardNumberAssigner;
+use App\Support\InsuranceCardNumber;
 use App\Support\WorkplaceOptions;
 use Database\Factories\EmployeeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'employee_number',
+    'card_number',
+    'card_printed_at',
     'national_id',
     'date_of_birth',
     'full_name',
@@ -24,6 +29,8 @@ class Employee extends Model
 {
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
+
+    use HasInsuranceCardPrint;
 
     /**
      * @return list<string>
@@ -42,6 +49,7 @@ class Employee extends Model
     {
         return [
             'date_of_birth' => 'date',
+            'card_printed_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -67,6 +75,29 @@ class Employee extends Model
     public function workplaceLabel(): ?string
     {
         return WorkplaceOptions::labelForKey($this->workplace);
+    }
+
+    public function cardNumberLabel(): string
+    {
+        return InsuranceCardNumber::display($this->card_number);
+    }
+
+    /**
+     * @param  Builder<Employee>  $query
+     * @return Builder<Employee>
+     */
+    public function scopeNeedsCardNumberAssignment(Builder $query): Builder
+    {
+        InsuranceCardNumber::constrainNeedsAssignment($query);
+
+        return $query;
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Employee $employee): void {
+            app(InsuranceCardNumberAssigner::class)->fillEmployee($employee);
+        });
     }
 
     public function hasSubmittedForm(): bool

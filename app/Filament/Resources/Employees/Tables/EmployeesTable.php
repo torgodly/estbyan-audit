@@ -4,17 +4,22 @@ namespace App\Filament\Resources\Employees\Tables;
 
 use App\Enums\RegistrationStatus;
 use App\Models\Employee;
+use App\Models\User;
+use App\Support\InsuranceCardNumber;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeesTable
 {
     public static function configure(Table $table): Table
     {
+        $canManageInsuranceCards = self::canManageInsuranceCards();
+
         return $table
             ->defaultSort('full_name')
             ->columns([
@@ -28,6 +33,20 @@ class EmployeesTable
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('card_number')
+                    ->label('رقم البطاقة')
+                    ->formatStateUsing(fn (?string $state): string => InsuranceCardNumber::display($state))
+                    ->searchable()
+                    ->toggleable(),
+                TextColumn::make('card_printed_at')
+                    ->label('طباعة البطاقة')
+                    ->badge()
+                    ->getStateUsing(fn (Employee $record): bool => $record->cardIsPrinted())
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'طُبعت' : 'لم تُطبع')
+                    ->color(fn (bool $state): string => $state ? 'success' : 'warning')
+                    ->sortable()
+                    ->toggleable()
+                    ->visible($canManageInsuranceCards),
                 TextColumn::make('national_id')
                     ->label('الرقم الوطني')
                     ->searchable()
@@ -97,5 +116,12 @@ class EmployeesTable
                     ->label('الملف'),
             ])
             ->toolbarActions([]);
+    }
+
+    private static function canManageInsuranceCards(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->canManageInsuranceCards();
     }
 }

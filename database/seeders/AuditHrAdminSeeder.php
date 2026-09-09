@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -40,6 +41,7 @@ class AuditHrAdminSeeder extends Seeder
                     'name' => $account['name'],
                     'password' => $account['password'],
                     'email_verified_at' => now(),
+                    'role' => UserRole::Hr,
                 ],
             );
         }

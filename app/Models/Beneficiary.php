@@ -4,8 +4,12 @@ namespace App\Models;
 
 use App\Enums\BeneficiaryRelationship;
 use App\Enums\BloodType;
+use App\Models\Concerns\HasInsuranceCardPrint;
+use App\Services\InsuranceCardNumberAssigner;
+use App\Support\InsuranceCardNumber;
 use Database\Factories\BeneficiaryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'nationality',
     'national_id',
     'passport_number',
+    'card_number',
+    'card_printed_at',
     'date_of_birth',
     'blood_type',
     'has_chronic_condition',
@@ -35,6 +41,8 @@ class Beneficiary extends Model
     /** @use HasFactory<BeneficiaryFactory> */
     use HasFactory;
 
+    use HasInsuranceCardPrint;
+
     protected $attributes = [
         'is_libyan' => true,
     ];
@@ -43,6 +51,7 @@ class Beneficiary extends Model
     {
         return [
             'date_of_birth' => 'date',
+            'card_printed_at' => 'datetime',
             'relationship' => BeneficiaryRelationship::class,
             'blood_type' => BloodType::class,
             'is_libyan' => 'boolean',
@@ -89,8 +98,28 @@ class Beneficiary extends Model
         return $parts !== [] ? implode(' · ', $parts) : '—';
     }
 
+    public function cardNumberLabel(): string
+    {
+        return InsuranceCardNumber::display($this->card_number);
+    }
+
+    /**
+     * @param  Builder<Beneficiary>  $query
+     * @return Builder<Beneficiary>
+     */
+    public function scopeNeedsCardNumberAssignment(Builder $query): Builder
+    {
+        InsuranceCardNumber::constrainNeedsAssignment($query);
+
+        return $query;
+    }
+
     protected static function booted(): void
     {
+        static::creating(function (Beneficiary $beneficiary): void {
+            app(InsuranceCardNumberAssigner::class)->fillBeneficiary($beneficiary);
+        });
+
         static::saving(function (Beneficiary $beneficiary): void {
             $beneficiary->has_chronic_condition = (bool) $beneficiary->has_chronic_conditions;
         });

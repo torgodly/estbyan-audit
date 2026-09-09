@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Employee;
 use App\Models\User;
 use App\Support\TestEmployees;
@@ -16,6 +17,8 @@ it('seeds three audit bureau hr admins for the filament panel', function () {
 
         expect($admin)->not->toBeNull()
             ->and($admin->name)->toBe($account['name'])
+            ->and($admin->role)->toBe(UserRole::Hr)
+            ->and($admin->canManageInsuranceCards())->toBeFalse()
             ->and(Hash::check($account['password'], $admin->password))->toBeTrue();
     }
 });

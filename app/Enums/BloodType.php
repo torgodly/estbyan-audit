@@ -40,4 +40,9 @@ enum BloodType: string
             self::ABNegative => 'AB-',
         };
     }
+
+    public function cardLabel(): string
+    {
+        return $this->symbol();
+    }
 }

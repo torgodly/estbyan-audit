@@ -68,6 +68,15 @@
     $defaultOpen = $positiveFlags->first()['key'] ?? 'chronic';
 @endphp
 
+@if ($this->canManageInsuranceCards())
+    @assets
+        <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
+        <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
+        <script src="{{ asset('js/html2media/html2media.js') }}"></script>
+        <script src="{{ asset('js/insurance-cards-pdf.js') }}"></script>
+    @endassets
+@endif
+
 <x-filament-panels::page>
     <div
         dir="rtl"
@@ -77,6 +86,22 @@
             previewUrl: null,
             previewType: null,
             previewTitle: '',
+            insuranceCardsBusy: false,
+            async exportInsuranceCards(output, personKey = null) {
+                if (this.insuranceCardsBusy || typeof window.exportInsuranceCards !== 'function') {
+                    return
+                }
+
+                this.insuranceCardsBusy = true
+
+                try {
+                    await window.exportInsuranceCards(output, personKey)
+                } catch (error) {
+                    console.error(error)
+                } finally {
+                    this.insuranceCardsBusy = false
+                }
+            },
             openMedical: @js($defaultOpen),
             openBeneficiary: {},
             openPreview(url, type, title) {
@@ -397,6 +422,68 @@
                         @endforelse
                     </div>
                 </section>
+
+                @if ($this->canManageInsuranceCards())
+                @php
+                    $insuranceCards = $this->insuranceCards();
+                    $beneficiaryCardCount = $insuranceCards->where('kind', 'beneficiary')->count();
+                    $printedCardCount = $this->printedInsuranceCardCount();
+                    $totalCardCount = $insuranceCards->count();
+                @endphp
+                <section class="hr-panel" id="insurance-cards">
+                    <div class="hr-panel__head">
+                        <div>
+                            <h3 class="hr-panel__title">بطاقات التأمين</h3>
+                            <p class="hr-panel__meta" style="margin-top: 0.2rem;">
+                                موظف
+                                @if ($beneficiaryCardCount > 0)
+                                    + {{ $beneficiaryCardCount }} مستفيد
+                                @endif
+                                · طُبع {{ $printedCardCount }} من {{ $totalCardCount }}
+                            </p>
+                        </div>
+                        <div class="hr-card-actions">
+                            <button
+                                type="button"
+                                class="hr-card-action"
+                                x-on:click="exportInsuranceCards('download')"
+                                x-bind:disabled="insuranceCardsBusy"
+                            >
+                                <span x-text="insuranceCardsBusy ? 'جاري التجهيز…' : 'تحميل PDF'"></span>
+                            </button>
+                            <button
+                                type="button"
+                                class="hr-card-action"
+                                x-on:click="exportInsuranceCards('print')"
+                                x-bind:disabled="insuranceCardsBusy"
+                            >
+                                طباعة الكل
+                            </button>
+                        </div>
+                    </div>
+                    <div class="hr-panel__body hr-panel__body--cards">
+                        @include('cards.employee-insurance-card', [
+                            'cards' => $insuranceCards,
+                            'embedAssets' => false,
+                            'preview' => true,
+                            'cardActions' => true,
+                        ])
+                    </div>
+                    <div
+                        id="insurance-cards-print"
+                        class="insurance-cards-print"
+                        data-filename="{{ \App\Support\EmployeeInsuranceCard::packFilename($registration) }}"
+                        aria-hidden="true"
+                    >
+                        @include('cards.employee-insurance-card', [
+                            'cards' => $insuranceCards,
+                            'embedAssets' => false,
+                            'preview' => false,
+                            'printPack' => true,
+                        ])
+                    </div>
+                </section>
+                @endif
             </div>
 
             {{-- Sticky review rail --}}

@@ -4,15 +4,19 @@ namespace App\Filament\Resources\MedicalRegistrations\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
+use App\Models\Beneficiary;
 use App\Models\User;
+use App\Services\InsuranceCardPrintMarker;
 use App\Services\ReferenceCardGenerator;
 use App\Services\RegistrationReviewService;
+use App\Support\EmployeeInsuranceCard;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -119,6 +123,18 @@ class ViewMedicalRegistration extends ViewRecord
                     ? EmployeeResource::getUrl('view', ['record' => $this->record->employee_id])
                     : null)
                 ->visible(fn (): bool => filled($this->record->employee_id)),
+            Action::make('downloadInsuranceCards')
+                ->label('تحميل PDF')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->visible(fn (): bool => $this->canManageInsuranceCards())
+                ->action(fn (): mixed => $this->js('window.exportInsuranceCards("download")')),
+            Action::make('printInsuranceCards')
+                ->label('طباعة')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->visible(fn (): bool => $this->canManageInsuranceCards())
+                ->action(fn (): mixed => $this->js('window.exportInsuranceCards("print")')),
             Action::make('downloadReferenceCard')
                 ->label('تحميل بطاقة المراجعة')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -137,5 +153,46 @@ class ViewMedicalRegistration extends ViewRecord
                     );
                 }),
         ];
+    }
+
+    public function canManageInsuranceCards(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->canManageInsuranceCards();
+    }
+
+    /**
+     * @return Collection<int, EmployeeInsuranceCard>
+     */
+    public function insuranceCards(): Collection
+    {
+        return EmployeeInsuranceCard::collection($this->getRecord());
+    }
+
+    public function toggleInsuranceCardPrinted(string $personKey): void
+    {
+        abort_unless($this->canManageInsuranceCards(), 403);
+
+        app(InsuranceCardPrintMarker::class)->toggle($this->getRecord(), $personKey);
+
+        $this->refreshInsuranceCardRecords();
+    }
+
+    public function printedInsuranceCardCount(): int
+    {
+        $registration = $this->getRecord();
+        $registration->loadMissing(['employee', 'beneficiaries']);
+
+        $count = $registration->employee?->cardIsPrinted() ? 1 : 0;
+
+        return $count + $registration->beneficiaries->filter(
+            fn (Beneficiary $beneficiary): bool => $beneficiary->cardIsPrinted(),
+        )->count();
+    }
+
+    private function refreshInsuranceCardRecords(): void
+    {
+        $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
     }
 }
