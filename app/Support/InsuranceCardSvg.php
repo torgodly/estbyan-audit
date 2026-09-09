@@ -104,44 +104,6 @@ final class InsuranceCardSvg
         $element->removeAttribute('display');
         $element->setAttribute('href', $src);
         $element->setAttribute('xlink:href', $src);
-        self::applyGrayscaleFilter($element);
-    }
-
-    private static function applyGrayscaleFilter(DOMElement $photo): void
-    {
-        $dom = $photo->ownerDocument;
-
-        if (! $dom instanceof DOMDocument) {
-            return;
-        }
-
-        $photo->setAttribute('filter', 'url(#card-photo-grayscale)');
-
-        $xpath = new DOMXPath($dom);
-
-        if (self::element($xpath, 'card-photo-grayscale') instanceof DOMElement) {
-            return;
-        }
-
-        $namespace = 'http://www.w3.org/2000/svg';
-        $filter = $dom->createElementNS($namespace, 'filter');
-        $filter->setAttribute('id', 'card-photo-grayscale');
-
-        $matrix = $dom->createElementNS($namespace, 'feColorMatrix');
-        $matrix->setAttribute('type', 'saturate');
-        $matrix->setAttribute('values', '0');
-        $filter->appendChild($matrix);
-
-        $xpath->registerNamespace('svg', $namespace);
-        $defs = $xpath->query('//svg:defs')->item(0);
-
-        if ($defs instanceof DOMElement) {
-            $defs->appendChild($filter);
-
-            return;
-        }
-
-        $photo->parentNode?->insertBefore($filter, $photo);
     }
 
     private static function setBarcode(DOMDocument $dom, DOMXPath $xpath, ?string $barcodeSvg): void
@@ -199,7 +161,6 @@ final class InsuranceCardSvg
             'card-number',
             'card-issued',
             'card-blood',
-            'card-photo-grayscale',
             'card-photo',
             'card-name',
             'card-job',
