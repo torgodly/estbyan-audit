@@ -315,6 +315,8 @@ it('exports insurance cards at cr80 print size from the on-page print pack', fun
         ->toContain('dataset.cardPerson')
         ->toContain('html2canvas')
         ->toContain('collectPrintPages')
+        ->toContain('inlineCardPhotos')
+        ->toContain("credentials: 'include'")
         ->toContain("unit: 'mm'")
         ->toContain('85.6')
         ->toContain('53.98')
