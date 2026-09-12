@@ -7,93 +7,110 @@
 <x-filament-panels::page>
     <div
         dir="rtl"
-        class="hr-scan"
+        class="hr-review hr-scan"
         x-data
         x-on:insurance-card-scanned.window="$nextTick(() => { $refs.scan?.focus(); $refs.scan?.select(); })"
     >
-        <form class="hr-scan__bar" wire:submit="scanCard">
-            <input
-                x-ref="scan"
-                type="text"
-                name="scan"
-                wire:model="scan"
-                class="hr-scan__input"
-                autocomplete="off"
-                inputmode="numeric"
-                autofocus
-                placeholder="امسح البطاقة أو أدخل الرقم"
-                aria-label="رقم بطاقة التأمين"
-            >
-            <button type="submit" class="hr-scan__add">إضافة</button>
-            <div class="hr-scan__counts" aria-live="polite">
-                <span><b>{{ $scannedCount }}</b> بطاقة</span>
-                <span><b>{{ $familyCount }}</b> عائلة</span>
+        <section class="hr-panel">
+            <div class="hr-panel__head">
+                <div>
+                    <h3 class="hr-panel__title">مسح البطاقة</h3>
+                    <p class="hr-panel__meta">امسح الباركود أو اكتب الرقم ثم اضغط إدخال. آخر عائلة تُمسح تظهر أولاً.</p>
+                </div>
+                <div class="hr-scan__counts">
+                    <span class="hr-chip">{{ $scannedCount }} بطاقة</span>
+                    <span class="hr-chip">{{ $familyCount }} عائلة</span>
+                </div>
             </div>
-        </form>
+            <div class="hr-panel__body hr-scan__bar-body">
+                <form class="hr-scan__bar" wire:submit="scanCard">
+                    <input
+                        x-ref="scan"
+                        type="text"
+                        name="scan"
+                        wire:model="scan"
+                        class="hr-scan__input"
+                        autocomplete="off"
+                        inputmode="numeric"
+                        autofocus
+                        placeholder="SC-12345678"
+                        aria-label="رقم بطاقة التأمين"
+                    >
+                    <button type="submit" class="hr-card-action">إضافة</button>
+                </form>
+            </div>
+        </section>
 
         @if ($groups === [])
-            <p class="hr-scan__empty">لا توجد بطاقات ممسوحة بعد. امسح بطاقة الموظف أو أحد أفراد العائلة.</p>
+            <section class="hr-panel">
+                <div class="hr-panel__body">
+                    <div class="hr-empty">
+                        <p class="hr-empty__title">لا توجد بطاقات ممسوحة بعد</p>
+                        <p class="hr-empty__text">امسح بطاقة الموظف أو أحد أفراد العائلة. ستظهر العائلة هنا مجمّعة.</p>
+                    </div>
+                </div>
+            </section>
         @else
             <div class="hr-scan-groups">
                 @foreach ($groups as $group)
-                    <section @class(['hr-scan-group', 'hr-scan-group--complete' => $group['complete']])>
-                        <header class="hr-scan-group__head">
-                            <div class="hr-scan-group__title">
-                                <strong>{{ $group['employee_name'] }}</strong>
-                                <span>
-                                    {{ $group['scanned_count'] }}/{{ $group['expected_count'] }}
+                    <section @class(['hr-panel hr-scan-group', 'hr-scan-group--complete' => $group['complete']])>
+                        <div class="hr-panel__head hr-scan-group__head">
+                            <div>
+                                <h3 class="hr-panel__title">{{ $group['employee_name'] }}</h3>
+                                <p class="hr-panel__meta">
+                                    مسح {{ $group['scanned_count'] }} من {{ $group['expected_count'] }}
                                     @if (filled($group['reference']))
                                         · {{ $group['reference'] }}
                                     @endif
-                                </span>
+                                </p>
                             </div>
-                            <div class="hr-scan-group__tools">
+                            <div class="hr-card-actions">
                                 @if ($group['complete'])
-                                    <span class="hr-scan-flag hr-scan-flag--ok">مكتملة</span>
+                                    <span class="hr-chip hr-chip--approved">مكتملة</span>
                                 @else
-                                    <span class="hr-scan-flag hr-scan-flag--miss">ناقص {{ $group['expected_count'] - $group['scanned_count'] }}</span>
+                                    <span class="hr-chip hr-chip--editing">ناقص {{ $group['expected_count'] - $group['scanned_count'] }}</span>
                                 @endif
                                 @if (filled($group['registration_url']))
-                                    <a href="{{ $group['registration_url'] }}" class="hr-scan-link">الطلب</a>
+                                    <a href="{{ $group['registration_url'] }}" class="hr-card-action">الطلب</a>
                                 @endif
                                 <button
                                     type="button"
-                                    class="hr-scan-x"
+                                    class="hr-card-action"
                                     wire:click="removeGroup({{ $group['employee_id'] }})"
-                                    title="إزالة العائلة"
-                                    aria-label="إزالة العائلة"
                                 >
-                                    ×
+                                    إزالة
                                 </button>
                             </div>
-                        </header>
-                        <ul class="hr-scan-members">
+                        </div>
+                        <div class="hr-panel__body hr-scan-group__body">
                             @foreach ($group['members'] as $member)
-                                <li @class(['hr-scan-member', 'hr-scan-member--scanned' => $member['scanned']])>
-                                    <span class="hr-scan-member__mark" aria-hidden="true">{{ $member['scanned'] ? '✓' : '·' }}</span>
-                                    <span class="hr-scan-member__who">
-                                        <b>{{ $member['name'] }}</b>
-                                        <i>{{ $member['role_label'] }}{{ filled($member['card_label']) && $member['card_label'] !== '—' ? ' · '.$member['card_label'] : '' }}</i>
-                                    </span>
-                                    <span class="hr-scan-member__tools">
+                                <div @class(['hr-scan-member', 'hr-scan-member--scanned' => $member['scanned']])>
+                                    <div class="hr-scan-member__who">
+                                        <strong>{{ $member['name'] }}</strong>
+                                        <span>{{ $member['role_label'] }}@if (filled($member['card_label']) && $member['card_label'] !== '—') · {{ $member['card_label'] }} @endif</span>
+                                    </div>
+                                    <div class="hr-scan-member__status">
+                                        @if ($member['scanned'])
+                                            <span class="hr-chip hr-chip--approved">تم المسح</span>
+                                        @else
+                                            <span class="hr-chip hr-chip--draft">لم يُمسح</span>
+                                        @endif
                                         @if ($member['is_printed'])
-                                            <span class="hr-scan-flag">مطبوعة</span>
+                                            <span class="hr-chip hr-chip--submitted">مطبوعة</span>
                                         @endif
                                         @if ($member['scanned'] && $member['card_number'])
                                             <button
                                                 type="button"
-                                                class="hr-scan-x"
+                                                class="hr-card-action"
                                                 wire:click="removeCard({{ \Illuminate\Support\Js::from($member['card_number']) }})"
-                                                title="إزالة البطاقة"
-                                                aria-label="إزالة البطاقة"
                                             >
-                                                ×
+                                                إزالة
                                             </button>
                                         @endif
-                                    </span>
-                                </li>
+                                    </div>
+                                </div>
                             @endforeach
-                        </ul>
+                        </div>
                     </section>
                 @endforeach
             </div>

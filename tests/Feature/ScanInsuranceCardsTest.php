@@ -29,7 +29,7 @@ it('lets support users open the scan page', function () {
     Livewire::test(ScanInsuranceCards::class)
         ->assertSuccessful()
         ->assertSee('مسح بطاقات التأمين')
-        ->assertSee('لا توجد بطاقات ممسوحة بعد. امسح بطاقة الموظف أو أحد أفراد العائلة.')
+        ->assertSee('لا توجد بطاقات ممسوحة بعد')
         ->assertActionVisible('markScannedPrinted')
         ->assertActionDisabled('markScannedPrinted');
 });
