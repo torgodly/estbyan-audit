@@ -64,69 +64,71 @@
                     </div>
                 </section>
             @else
-                @foreach ($groups as $group)
-                    <section class="hr-panel">
-                        <div class="hr-panel__head">
-                            <div>
-                                <h3 class="hr-panel__title">{{ $group['employee_name'] }}</h3>
-                                <p class="hr-panel__meta" style="margin-top: 0.2rem;">
-                                    مسح {{ $group['scanned_count'] }} من {{ $group['expected_count'] }}
-                                    @if (filled($group['reference']))
-                                        · {{ $group['reference'] }}
+                <div class="hr-scan-groups">
+                    @foreach ($groups as $group)
+                        <section class="hr-panel hr-scan-group">
+                            <div class="hr-panel__head hr-scan-group__head">
+                                <div>
+                                    <h3 class="hr-panel__title">{{ $group['employee_name'] }}</h3>
+                                    <p class="hr-panel__meta" style="margin-top: 0.2rem;">
+                                        مسح {{ $group['scanned_count'] }} من {{ $group['expected_count'] }}
+                                        @if (filled($group['reference']))
+                                            · {{ $group['reference'] }}
+                                        @endif
+                                    </p>
+                                </div>
+                                <div class="hr-card-actions">
+                                    @if ($group['complete'])
+                                        <span class="hr-chip hr-chip--approved">العائلة مكتملة</span>
+                                    @else
+                                        <span class="hr-chip hr-chip--editing">ناقص {{ $group['expected_count'] - $group['scanned_count'] }}</span>
                                     @endif
-                                </p>
+                                    @if (filled($group['registration_url']))
+                                        <a href="{{ $group['registration_url'] }}" class="hr-card-action">ملف الطلب</a>
+                                    @endif
+                                    <button
+                                        type="button"
+                                        class="hr-card-action"
+                                        wire:click="removeGroup({{ $group['employee_id'] }})"
+                                    >
+                                        إزالة العائلة
+                                    </button>
+                                </div>
                             </div>
-                            <div class="hr-card-actions">
-                                @if ($group['complete'])
-                                    <span class="hr-chip hr-chip--approved">العائلة مكتملة</span>
-                                @else
-                                    <span class="hr-chip hr-chip--editing">ناقص {{ $group['expected_count'] - $group['scanned_count'] }}</span>
-                                @endif
-                                @if (filled($group['registration_url']))
-                                    <a href="{{ $group['registration_url'] }}" class="hr-card-action">ملف الطلب</a>
-                                @endif
-                                <button
-                                    type="button"
-                                    class="hr-card-action"
-                                    wire:click="removeGroup({{ $group['employee_id'] }})"
-                                >
-                                    إزالة العائلة
-                                </button>
-                            </div>
-                        </div>
-                        <div class="hr-panel__body">
-                            <div class="hr-scan-members">
-                                @foreach ($group['members'] as $member)
-                                    <div @class(['hr-scan-member', 'hr-scan-member--scanned' => $member['scanned']])>
-                                        <div>
-                                            <strong>{{ $member['name'] }}</strong>
-                                            <span>{{ $member['role_label'] }} · {{ $member['card_label'] }}</span>
-                                        </div>
-                                        <div class="hr-scan-member__status">
-                                            @if ($member['scanned'])
-                                                <span class="hr-chip hr-chip--approved">تم المسح</span>
-                                                @if ($member['card_number'])
-                                                    <button
-                                                        type="button"
-                                                        class="hr-card-action"
-                                                        wire:click="removeCard({{ \Illuminate\Support\Js::from($member['card_number']) }})"
-                                                    >
-                                                        إزالة
-                                                    </button>
+                            <div class="hr-panel__body">
+                                <div class="hr-scan-members">
+                                    @foreach ($group['members'] as $member)
+                                        <div @class(['hr-scan-member', 'hr-scan-member--scanned' => $member['scanned']])>
+                                            <div>
+                                                <strong>{{ $member['name'] }}</strong>
+                                                <span>{{ $member['role_label'] }} · {{ $member['card_label'] }}</span>
+                                            </div>
+                                            <div class="hr-scan-member__status">
+                                                @if ($member['scanned'])
+                                                    <span class="hr-chip hr-chip--approved">تم المسح</span>
+                                                    @if ($member['card_number'])
+                                                        <button
+                                                            type="button"
+                                                            class="hr-card-action"
+                                                            wire:click="removeCard({{ \Illuminate\Support\Js::from($member['card_number']) }})"
+                                                        >
+                                                            إزالة
+                                                        </button>
+                                                    @endif
+                                                @else
+                                                    <span class="hr-chip hr-chip--draft">لم يُمسح بعد</span>
                                                 @endif
-                                            @else
-                                                <span class="hr-chip hr-chip--draft">لم يُمسح بعد</span>
-                                            @endif
-                                            @if ($member['is_printed'])
-                                                <span class="hr-chip hr-chip--submitted">مطبوعة</span>
-                                            @endif
+                                                @if ($member['is_printed'])
+                                                    <span class="hr-chip hr-chip--submitted">مطبوعة</span>
+                                                @endif
+                                            </div>
                                         </div>
-                                    </div>
-                                @endforeach
+                                    @endforeach
+                                </div>
                             </div>
-                        </div>
-                    </section>
-                @endforeach
+                        </section>
+                    @endforeach
+                </div>
             @endif
         </div>
     </div>

@@ -82,7 +82,8 @@ it('groups scanned employee and family cards under one family', function () {
         ->call('scanCard')
         ->assertSee('خالد صالح')
         ->assertSee('سارة خالد')
-        ->assertSee('العائلة مكتملة');
+        ->assertSee('العائلة مكتملة')
+        ->assertSee('hr-scan-groups', false);
 
     expect($page->instance()->scannedCount())->toBe(2)
         ->and($page->instance()->familyCount())->toBe(1)
@@ -106,7 +107,8 @@ it('keeps different employees in separate family groups', function () {
         ->set('scan', $first->employee->card_number)
         ->call('scanCard')
         ->set('scan', $second->employee->card_number)
-        ->call('scanCard');
+        ->call('scanCard')
+        ->assertSee('hr-scan-groups', false);
 
     expect($page->instance()->familyCount())->toBe(2)
         ->and($page->instance()->groups())->toHaveCount(2);
