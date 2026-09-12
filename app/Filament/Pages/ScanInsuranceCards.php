@@ -9,6 +9,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
@@ -28,6 +29,15 @@ class ScanInsuranceCards extends Page
     protected static ?string $slug = 'scan-insurance-cards';
 
     protected string $view = 'filament.pages.scan-insurance-cards';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected array $extraBodyAttributes = [
+        'class' => 'hr-scan-page',
+    ];
 
     public string $scan = '';
 
@@ -90,22 +100,20 @@ class ScanInsuranceCards extends Page
             return;
         }
 
-        if (collect($this->scanned)->contains('card_number', $hit->cardNumber)) {
-            Notification::make()
-                ->title('تم مسح هذه البطاقة مسبقاً')
-                ->warning()
-                ->send();
+        $existingIndex = collect($this->scanned)->search(
+            fn (array $item): bool => $item['card_number'] === $hit->cardNumber,
+        );
+
+        if ($existingIndex !== false) {
+            $existing = $this->scanned[$existingIndex];
+            unset($this->scanned[$existingIndex]);
+            $this->scanned = array_values($this->scanned);
+            $this->scanned[] = $existing;
 
             return;
         }
 
         $this->scanned[] = $hit->toArray();
-
-        Notification::make()
-            ->title('أُضيفت '.$hit->name)
-            ->body($hit->roleLabel.' · '.$hit->cardLabel())
-            ->success()
-            ->send();
     }
 
     public function removeCard(string $cardNumber): void

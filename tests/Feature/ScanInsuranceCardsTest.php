@@ -29,7 +29,7 @@ it('lets support users open the scan page', function () {
     Livewire::test(ScanInsuranceCards::class)
         ->assertSuccessful()
         ->assertSee('مسح بطاقات التأمين')
-        ->assertSee('لا توجد بطاقات ممسوحة بعد')
+        ->assertSee('لا توجد بطاقات ممسوحة بعد. امسح بطاقة الموظف أو أحد أفراد العائلة.')
         ->assertActionVisible('markScannedPrinted')
         ->assertActionDisabled('markScannedPrinted');
 });
@@ -82,7 +82,7 @@ it('groups scanned employee and family cards under one family', function () {
         ->call('scanCard')
         ->assertSee('خالد صالح')
         ->assertSee('سارة خالد')
-        ->assertSee('العائلة مكتملة')
+        ->assertSee('مكتملة')
         ->assertSee('hr-scan-groups', false);
 
     expect($page->instance()->scannedCount())->toBe(2)
@@ -111,21 +111,61 @@ it('keeps different employees in separate family groups', function () {
         ->assertSee('hr-scan-groups', false);
 
     expect($page->instance()->familyCount())->toBe(2)
-        ->and($page->instance()->groups())->toHaveCount(2);
+        ->and($page->instance()->groups())->toHaveCount(2)
+        ->and($page->instance()->groups()[0]['employee_name'])->toBe($second->employee->full_name);
 });
 
-it('does not add the same card twice', function () {
+it('does not add the same card twice and keeps the last scan on top', function () {
     $support = User::factory()->smartCare()->create();
-    $registration = MedicalRegistration::factory()->submitted()->create();
+    $first = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'أحمد علي',
+    ]);
+    $second = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'منى العابد',
+    ]);
 
     $this->actingAs($support);
 
-    Livewire::test(ScanInsuranceCards::class)
-        ->set('scan', $registration->employee->card_number)
+    $page = Livewire::test(ScanInsuranceCards::class)
+        ->set('scan', $first->employee->card_number)
         ->call('scanCard')
-        ->set('scan', $registration->employee->card_number)
+        ->set('scan', $second->employee->card_number)
         ->call('scanCard')
-        ->assertSet('scanned', fn (array $scanned): bool => count($scanned) === 1);
+        ->set('scan', $first->employee->card_number)
+        ->call('scanCard');
+
+    expect($page->instance()->scanned)->toHaveCount(2)
+        ->and($page->instance()->groups()[0]['employee_name'])->toBe($first->employee->full_name)
+        ->and($page->instance()->groups()[1]['employee_name'])->toBe($second->employee->full_name);
+});
+
+it('moves a family to the top when another of its cards is scanned', function () {
+    $support = User::factory()->smartCare()->create();
+    $first = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'خالد صالح',
+        'gender' => Gender::Male,
+    ]);
+    $spouse = Beneficiary::factory()->create([
+        'medical_registration_id' => $first->id,
+        'full_name' => 'سارة خالد',
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
+    $second = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'منى العابد',
+    ]);
+
+    $this->actingAs($support);
+
+    $page = Livewire::test(ScanInsuranceCards::class)
+        ->set('scan', $first->employee->card_number)
+        ->call('scanCard')
+        ->set('scan', $second->employee->card_number)
+        ->call('scanCard')
+        ->set('scan', $spouse->card_number)
+        ->call('scanCard');
+
+    expect($page->instance()->groups()[0]['employee_name'])->toBe($first->employee->full_name)
+        ->and($page->instance()->groups()[0]['scanned_count'])->toBe(2);
 });
 
 it('marks only the scanned cards as printed', function () {

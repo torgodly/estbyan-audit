@@ -63,7 +63,7 @@ class InsuranceCardScanService
             ->get()
             ->keyBy('id');
 
-        $order = collect($scanned)->pluck('employee_id')->unique()->reverse()->values();
+        $order = collect($scanned)->pluck('employee_id')->reverse()->unique()->values();
 
         return $order->map(function (mixed $employeeId) use ($byEmployee, $employees): array {
             $employeeId = (int) $employeeId;
