@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Employees\Tables;
 use App\Enums\RegistrationStatus;
 use App\Models\Employee;
 use App\Models\User;
+use App\Support\InsuranceCardFamily;
 use App\Support\InsuranceCardNumber;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
@@ -47,6 +48,12 @@ class EmployeesTable
                     ->sortable()
                     ->toggleable()
                     ->visible($canManageInsuranceCards),
+                TextColumn::make('printed_family_cards')
+                    ->label('مطبوعة')
+                    ->state(fn (Employee $record): string => (string) InsuranceCardFamily::statsForEmployee($record)['printed']),
+                TextColumn::make('unprinted_family_cards')
+                    ->label('غير مطبوعة')
+                    ->state(fn (Employee $record): string => (string) InsuranceCardFamily::statsForEmployee($record)['unprinted']),
                 TextColumn::make('national_id')
                     ->label('الرقم الوطني')
                     ->searchable()
@@ -87,7 +94,6 @@ class EmployeesTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('medical_registrations_count')
                     ->label('عدد الطلبات')
-                    ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -110,6 +116,16 @@ class EmployeesTable
                     ->trueLabel('نشط')
                     ->falseLabel('غير نشط')
                     ->placeholder('الكل'),
+                TernaryFilter::make('family_cards_incomplete')
+                    ->label('طباعة العائلة')
+                    ->placeholder('الكل')
+                    ->trueLabel('غير مكتملة')
+                    ->falseLabel('مكتملة بالكامل')
+                    ->queries(
+                        true: fn ($query) => InsuranceCardFamily::constrainEmployeeIncomplete($query),
+                        false: fn ($query) => InsuranceCardFamily::constrainEmployeeComplete($query),
+                        blank: fn ($query) => $query,
+                    ),
             ])
             ->recordActions([
                 ViewAction::make()

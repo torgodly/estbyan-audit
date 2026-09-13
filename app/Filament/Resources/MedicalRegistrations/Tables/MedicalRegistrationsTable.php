@@ -4,6 +4,7 @@ namespace App\Filament\Resources\MedicalRegistrations\Tables;
 
 use App\Enums\RegistrationStatus;
 use App\Models\MedicalRegistration;
+use App\Support\InsuranceCardFamily;
 use App\Support\RegistrationDocuments;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -11,6 +12,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -65,9 +67,14 @@ class MedicalRegistrationsTable
                     ->color(fn (RegistrationStatus $state): string => $state->color()),
                 TextColumn::make('beneficiaries_count')
                     ->label('المستفيدون')
-                    ->state(fn (MedicalRegistration $record): int => $record->beneficiaries()->count())
-                    ->numeric()
+                    ->state(fn (MedicalRegistration $record): string => (string) $record->beneficiaries->count())
                     ->sortable(),
+                TextColumn::make('printed_family_cards')
+                    ->label('مطبوعة')
+                    ->state(fn (MedicalRegistration $record): string => (string) InsuranceCardFamily::statsForRegistration($record)['printed']),
+                TextColumn::make('unprinted_family_cards')
+                    ->label('غير مطبوعة')
+                    ->state(fn (MedicalRegistration $record): string => (string) InsuranceCardFamily::statsForRegistration($record)['unprinted']),
                 TextColumn::make('reviewer.name')
                     ->label('المراجع')
                     ->placeholder('—')
@@ -125,6 +132,16 @@ class MedicalRegistrationsTable
                                 fn (Builder $query, $date): Builder => $query->whereDate('submitted_at', '<=', $date),
                             );
                     }),
+                TernaryFilter::make('family_cards_incomplete')
+                    ->label('طباعة العائلة')
+                    ->placeholder('الكل')
+                    ->trueLabel('غير مكتملة')
+                    ->falseLabel('مكتملة بالكامل')
+                    ->queries(
+                        true: fn (Builder $query): Builder => InsuranceCardFamily::constrainRegistrationIncomplete($query),
+                        false: fn (Builder $query): Builder => InsuranceCardFamily::constrainRegistrationComplete($query),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
             ])
             ->recordActions([
                 ViewAction::make()

@@ -37,7 +37,7 @@ class MedicalRegistrationResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['reviewer', 'employee']);
+            ->with(['reviewer', 'employee', 'beneficiaries']);
     }
 
     public static function getWidgets(): array

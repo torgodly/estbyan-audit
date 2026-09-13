@@ -58,7 +58,11 @@ class InsuranceCardScanService
         $employeeIds = $byEmployee->keys()->map(fn (mixed $id): int => (int) $id)->all();
 
         $employees = Employee::query()
-            ->with(['latestSubmittedRegistration.beneficiaries', 'latestMedicalRegistration.beneficiaries'])
+            ->with([
+                'latestSubmittedRegistration.beneficiaries',
+                'latestMedicalRegistration.beneficiaries',
+                'cardsDeliveredBy',
+            ])
             ->whereIn('id', $employeeIds)
             ->get()
             ->keyBy('id');
@@ -110,6 +114,7 @@ class InsuranceCardScanService
             }
 
             $employeeHit = $hits->firstWhere('kind', 'employee');
+            $deliveredTo = $employee?->cards_delivered_to;
 
             return [
                 'employee_id' => $employeeId,
@@ -124,6 +129,11 @@ class InsuranceCardScanService
                 'expected_count' => count($members),
                 'complete' => count($members) > 0 && $hits->count() >= count($members),
                 'members' => $members,
+                'is_delivered' => $employee?->cardsAreDelivered() ?? false,
+                'delivered_to' => $deliveredTo?->value,
+                'delivered_to_label' => $deliveredTo?->getLabel(),
+                'delivered_at' => $employee?->cards_delivered_at?->timezone(config('app.timezone'))->format('Y-m-d H:i'),
+                'delivered_by_name' => $employee?->cardsDeliveredBy?->name,
             ];
         })->all();
     }

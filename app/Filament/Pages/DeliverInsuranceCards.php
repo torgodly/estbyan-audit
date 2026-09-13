@@ -1,0 +1,276 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Enums\CardDeliveryRecipient;
+use App\Models\Employee;
+use App\Models\User;
+use App\Services\InsuranceCardScanService;
+use App\Support\InsuranceCardNumber;
+use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Forms\Components\ViewField;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Auth;
+use UnitEnum;
+
+class DeliverInsuranceCards extends Page
+{
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHandRaised;
+
+    protected static ?string $navigationLabel = 'تسليم البطاقات';
+
+    protected static ?string $title = 'تسليم بطاقات التأمين';
+
+    protected static string|UnitEnum|null $navigationGroup = 'التسجيل الطبي';
+
+    protected static ?int $navigationSort = 6;
+
+    protected static ?string $slug = 'deliver-insurance-cards';
+
+    protected string $view = 'filament.pages.deliver-insurance-cards';
+
+    protected Width|string|null $maxContentWidth = Width::FourExtraLarge;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected array $extraBodyAttributes = [
+        'class' => 'hr-deliver-page',
+    ];
+
+    public string $scan = '';
+
+    /**
+     * @var list<array<string, mixed>>
+     */
+    public array $scanned = [];
+
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->isHr();
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return 'تسليم عائلة واحدة في كل مرة. أنهِ التسليم أو أفرغ القائمة قبل بدء عائلة أخرى.';
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function groups(): array
+    {
+        return app(InsuranceCardScanService::class)->groups($this->scanned);
+    }
+
+    public function family(): ?array
+    {
+        return $this->groups()[0] ?? null;
+    }
+
+    public function canDeliver(): bool
+    {
+        $family = $this->family();
+
+        return $family !== null && $family['complete'] === true;
+    }
+
+    public function scanCard(): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $raw = trim($this->scan);
+        $this->reset('scan');
+        $this->dispatch('insurance-card-scanned');
+
+        if (InsuranceCardNumber::normalize($raw) === null) {
+            Notification::make()
+                ->title('رقم البطاقة غير صالح')
+                ->body('امسح باركود البطاقة أو أدخل الرقم المكوّن من 8 أرقام.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $hit = app(InsuranceCardScanService::class)->find($raw);
+
+        if ($hit === null) {
+            Notification::make()
+                ->title('لم يتم العثور على البطاقة')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if (! $hit->isPrinted) {
+            Notification::make()
+                ->title('البطاقة غير مطبوعة')
+                ->body('لا يمكن تسليم بطاقة لم تُطبع بعد. يجب طباعتها من صفحة المسح أولاً.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $activeEmployeeId = $this->activeEmployeeId();
+
+        if ($activeEmployeeId !== null && $hit->employeeId !== $activeEmployeeId) {
+            Notification::make()
+                ->title('أنهِ تسليم هذه العائلة أولاً')
+                ->body('امسح بقية بطاقات هذه العائلة ثم اضغط تم التسليم، أو أفرغ القائمة للبدء من جديد.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $existingIndex = collect($this->scanned)->search(
+            fn (array $item): bool => $item['card_number'] === $hit->cardNumber,
+        );
+
+        if ($existingIndex !== false) {
+            return;
+        }
+
+        $this->scanned[] = $hit->toArray();
+    }
+
+    public function removeCard(string $cardNumber): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $this->scanned = collect($this->scanned)
+            ->reject(fn (array $hit): bool => $hit['card_number'] === $cardNumber)
+            ->values()
+            ->all();
+    }
+
+    public function clearScanned(): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $this->scanned = [];
+    }
+
+    public function markDelivered(string|CardDeliveryRecipient $deliveredTo): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        if (! $this->canDeliver()) {
+            Notification::make()
+                ->title('لا يمكن التسليم قبل مسح كل البطاقات')
+                ->body('يجب مسح بطاقة الموظف وكل أفراد العائلة.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $recipient = $deliveredTo instanceof CardDeliveryRecipient
+            ? $deliveredTo
+            : CardDeliveryRecipient::tryFrom($deliveredTo);
+
+        if ($recipient === null) {
+            Notification::make()
+                ->title('حدّد إلى من سُلّمت البطاقات')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $user = Auth::user();
+        assert($user instanceof User);
+
+        $family = $this->family();
+        $employee = Employee::query()->find($family['employee_id'] ?? null);
+
+        if ($employee === null) {
+            Notification::make()
+                ->title('لم يتم العثور على الموظف')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $wasDelivered = $employee->cardsAreDelivered();
+        $employee->markCardsDelivered($user, $recipient);
+        $this->scanned = [];
+
+        Notification::make()
+            ->title($wasDelivered ? 'تم تحديث التسليم' : 'تم التسليم')
+            ->body(
+                ($wasDelivered ? 'حُدّث تسليم بطاقات ' : 'سُلّمت بطاقات ')
+                .$employee->full_name
+                .' إلى '
+                .$recipient->getLabel()
+                .'.'
+            )
+            ->success()
+            ->send();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('markDelivered')
+                ->label(fn (): string => ($this->family()['is_delivered'] ?? false) ? 'تحديث التسليم' : 'تم التسليم')
+                ->icon(Heroicon::OutlinedCheckCircle)
+                ->color('success')
+                ->disabled(fn (): bool => ! $this->canDeliver())
+                ->modalHeading(fn (): string => ($this->family()['is_delivered'] ?? false) ? 'تحديث التسليم' : 'تأكيد التسليم')
+                ->modalDescription(null)
+                ->modalWidth(Width::Large)
+                ->extraModalWindowAttributes(['class' => 'hr-deliver-modal-window'])
+                ->fillForm(fn (): array => [
+                    'delivered_to' => $this->family()['delivered_to'] ?? null,
+                ])
+                ->schema([
+                    ViewField::make('delivered_to')
+                        ->hiddenLabel()
+                        ->view('filament.pages.partials.deliver-cards-modal')
+                        ->viewData(fn (): array => [
+                            'family' => $this->family() ?? [],
+                        ])
+                        ->required()
+                        ->live(),
+                ])
+                ->modalSubmitActionLabel(fn (): string => ($this->family()['is_delivered'] ?? false) ? 'حفظ التعديل' : 'تأكيد التسليم')
+                ->modalCancelActionLabel('إلغاء')
+                ->action(function (array $data): void {
+                    $deliveredTo = $data['delivered_to'] ?? '';
+
+                    $this->markDelivered(
+                        $deliveredTo instanceof CardDeliveryRecipient
+                            ? $deliveredTo
+                            : (string) $deliveredTo,
+                    );
+                }),
+            Action::make('clearScanned')
+                ->label('إفراغ القائمة')
+                ->icon(Heroicon::OutlinedTrash)
+                ->color('gray')
+                ->disabled(fn (): bool => $this->scanned === [])
+                ->action(function (): void {
+                    $this->clearScanned();
+                }),
+        ];
+    }
+
+    private function activeEmployeeId(): ?int
+    {
+        $employeeId = $this->scanned[0]['employee_id'] ?? null;
+
+        return $employeeId === null ? null : (int) $employeeId;
+    }
+}
