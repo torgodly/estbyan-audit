@@ -8,14 +8,56 @@
     <div
         dir="rtl"
         class="hr-review hr-scan"
-        x-data
+        x-data="{
+            storageKey: 'estbyan.scan-insurance-cards',
+            ready: false,
+            async init() {
+                const saved = this.read();
+
+                if (saved.length > 0 && this.$wire.scanned.length === 0) {
+                    await this.$wire.restoreScanned(saved);
+                }
+
+                this.ready = true;
+                this.persist(this.$wire.scanned);
+            },
+            read() {
+                try {
+                    const parsed = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (error) {
+                    return [];
+                }
+            },
+            persist(items) {
+                if (! this.ready) {
+                    return;
+                }
+
+                const list = Array.isArray(items) ? items : [];
+
+                if (list.length === 0) {
+                    localStorage.removeItem(this.storageKey);
+
+                    return;
+                }
+
+                localStorage.setItem(this.storageKey, JSON.stringify(list));
+            },
+            clearCache() {
+                localStorage.removeItem(this.storageKey);
+                this.$wire.clearScanned();
+            },
+        }"
+        x-init="$watch('$wire.scanned', (items) => persist(items))"
         x-on:insurance-card-scanned.window="$nextTick(() => { $refs.scan?.focus(); $refs.scan?.select(); })"
     >
         <section class="hr-panel">
             <div class="hr-panel__head">
                 <div>
                     <h3 class="hr-panel__title">مسح البطاقة</h3>
-                    <p class="hr-panel__meta">امسح الباركود أو اكتب الرقم ثم اضغط إدخال. آخر عائلة تُمسح تظهر أولاً.</p>
+                    <p class="hr-panel__meta">امسح الباركود أو اكتب الرقم ثم اضغط إدخال. آخر عائلة تُمسح تظهر أولاً. القائمة تبقى محفوظة في هذا المتصفح بعد تحديث الصفحة.</p>
                 </div>
                 <div class="hr-scan__counts">
                     <span class="hr-chip">{{ $scannedCount }} بطاقة</span>
@@ -37,6 +79,7 @@
                         aria-label="رقم بطاقة التأمين"
                     >
                     <button type="submit" class="hr-card-action">إضافة</button>
+                    <button type="button" class="hr-card-action" x-on:click="clearCache()">حذف الذاكرة</button>
                 </form>
             </div>
         </section>

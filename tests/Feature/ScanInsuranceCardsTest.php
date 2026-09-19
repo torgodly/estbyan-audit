@@ -198,3 +198,33 @@ it('marks only the scanned cards as printed', function () {
         ->and($spouse->fresh()->cardIsPrinted())->toBeTrue()
         ->and($child->fresh()->cardIsPrinted())->toBeFalse();
 });
+
+it('restores a scanned list saved in the browser and ignores invalid cache', function () {
+    $support = User::factory()->smartCare()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create();
+
+    $this->actingAs($support);
+
+    $page = Livewire::test(ScanInsuranceCards::class)
+        ->set('scan', $registration->employee->card_number)
+        ->call('scanCard');
+
+    $saved = $page->get('scanned');
+
+    $page->call('clearScanned')
+        ->assertSet('scanned', [])
+        ->call('restoreScanned', $saved)
+        ->assertSet('scanned', $saved)
+        ->call('restoreScanned', [['name' => 'broken'], 'nope'])
+        ->assertSet('scanned', []);
+});
+
+it('shows a client-side cache clear control on the scan page', function () {
+    $support = User::factory()->smartCare()->create();
+
+    $this->actingAs($support);
+
+    Livewire::test(ScanInsuranceCards::class)
+        ->assertSee('حذف الذاكرة')
+        ->assertSeeHtml('estbyan.scan-insurance-cards');
+});

@@ -65,6 +65,14 @@ enum BeneficiaryRelationship: string
         };
     }
 
+    public function isParent(): bool
+    {
+        return match ($this) {
+            self::Father, self::Mother => true,
+            default => false,
+        };
+    }
+
     /**
      * Spouse and mother may always be non-Libyan.
      * Children become non-Libyan only when the form forces it (non-Libyan husband).

@@ -143,6 +143,30 @@ class ScanInsuranceCards extends Page
         $this->scanned = [];
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    public function restoreScanned(array $items): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $this->scanned = collect($items)
+            ->filter(fn (mixed $item): bool => is_array($item) && filled($item['card_number'] ?? null) && filled($item['employee_id'] ?? null))
+            ->map(fn (array $item): array => [
+                'card_number' => (string) $item['card_number'],
+                'kind' => (string) ($item['kind'] ?? 'employee'),
+                'employee_id' => (int) $item['employee_id'],
+                'registration_id' => filled($item['registration_id'] ?? null) ? (int) $item['registration_id'] : null,
+                'beneficiary_id' => filled($item['beneficiary_id'] ?? null) ? (int) $item['beneficiary_id'] : null,
+                'name' => (string) ($item['name'] ?? ''),
+                'role_label' => (string) ($item['role_label'] ?? ''),
+                'person_key' => (string) ($item['person_key'] ?? ''),
+                'is_printed' => (bool) ($item['is_printed'] ?? false),
+            ])
+            ->values()
+            ->all();
+    }
+
     public function markScannedPrinted(): void
     {
         abort_unless(static::canAccess(), 403);

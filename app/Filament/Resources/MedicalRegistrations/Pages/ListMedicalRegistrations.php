@@ -6,8 +6,11 @@ use App\Enums\RegistrationStatus;
 use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
 use App\Filament\Widgets\RegistrationStatsOverview;
 use App\Models\MedicalRegistration;
+use App\Support\PrintedInsuranceCardsSpreadsheet;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListMedicalRegistrations extends ListRecords
@@ -16,7 +19,13 @@ class ListMedicalRegistrations extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Action::make('exportPrintedCards')
+                ->label('تصدير Excel')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('gray')
+                ->action(fn () => PrintedInsuranceCardsSpreadsheet::download()),
+        ];
     }
 
     /**
