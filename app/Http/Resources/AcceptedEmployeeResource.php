@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
-use App\Support\EmployeeInsuranceCard;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -79,8 +78,9 @@ class AcceptedEmployeeResource extends JsonResource
             'reviewed_at' => $registration->reviewed_at?->toIso8601String(),
             'created_at' => $registration->created_at?->toIso8601String(),
             'updated_at' => $registration->updated_at?->toIso8601String(),
-            'photo' => EmployeeInsuranceCard::photoDataUriFromPath($registration->employee_photo_path),
-            'family_status_document' => EmployeeInsuranceCard::photoDataUriFromPath($registration->family_status_document_path),
+            'photo' => filled($registration->employee_photo_path)
+                ? route('api.accepted-employees.photo', $registration)
+                : null,
             'family_members' => $registration->beneficiaries
                 ->map(fn (Beneficiary $beneficiary): array => (new AcceptedFamilyMemberResource($beneficiary))->resolve($request))
                 ->values()

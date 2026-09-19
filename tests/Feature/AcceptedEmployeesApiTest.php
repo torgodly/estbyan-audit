@@ -93,7 +93,6 @@ it('returns only accepted employees with their family members', function () {
                 'created_at',
                 'updated_at',
                 'photo',
-                'family_status_document',
                 'family_members' => [[
                     'medical_registration_id',
                     'photo',
@@ -110,19 +109,18 @@ it('returns only accepted employees with their family members', function () {
         ->and($response->json('data.0.family_members.1.id'))->toBe($son->id);
 });
 
-it('embeds employee and family photos', function () {
+it('returns photo urls and serves the image with the same api key', function () {
     Storage::fake('local');
 
     $bytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
     Storage::disk('local')->put('registrations/employee.png', $bytes);
     Storage::disk('local')->put('registrations/spouse.png', $bytes);
-    Storage::disk('local')->put('registrations/family.pdf', $bytes);
 
     $approved = MedicalRegistration::factory()->approved()->create([
         'employee_photo_path' => 'registrations/employee.png',
         'family_status_document_path' => 'registrations/family.pdf',
     ]);
-    Beneficiary::factory()->create([
+    $spouse = Beneficiary::factory()->create([
         'medical_registration_id' => $approved->id,
         'full_name' => 'فاطمة أحمد',
         'relationship' => BeneficiaryRelationship::Spouse,
@@ -131,11 +129,26 @@ it('embeds employee and family photos', function () {
 
     $response = $this->withHeader('X-Api-Key', ACCEPTED_REGISTRATIONS_API_KEY)
         ->getJson('/api/accepted-employees')
-        ->assertOk();
+        ->assertOk()
+        ->assertJsonMissingPath('data.0.family_status_document');
 
-    $encoded = base64_encode($bytes);
+    $employeePhoto = $response->json('data.0.photo');
+    $familyPhoto = $response->json('data.0.family_members.0.photo');
 
-    expect($response->json('data.0.photo'))->toStartWith('data:')->toContain($encoded)
-        ->and($response->json('data.0.family_status_document'))->toStartWith('data:')->toContain($encoded)
-        ->and($response->json('data.0.family_members.0.photo'))->toStartWith('data:')->toContain($encoded);
+    expect($employeePhoto)->toBe(route('api.accepted-employees.photo', $approved))
+        ->and($familyPhoto)->toBe(route('api.accepted-employees.family-member-photo', [$approved, $spouse]));
+
+    $this->flushHeaders();
+
+    $this->get($employeePhoto)->assertUnauthorized();
+
+    $this->withHeader('X-Api-Key', ACCEPTED_REGISTRATIONS_API_KEY)
+        ->get($employeePhoto)
+        ->assertOk()
+        ->assertHeader('content-type', 'image/png');
+
+    $this->withHeader('X-Api-Key', ACCEPTED_REGISTRATIONS_API_KEY)
+        ->get($familyPhoto)
+        ->assertOk()
+        ->assertHeader('content-type', 'image/png');
 });

@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use App\Models\Beneficiary;
-use App\Support\EmployeeInsuranceCard;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -46,7 +45,9 @@ class AcceptedFamilyMemberResource extends JsonResource
             'uses_medical_devices' => $beneficiary->uses_medical_devices,
             'hospitalized_recently' => $beneficiary->hospitalized_recently,
             'traveled_for_treatment' => $beneficiary->traveled_for_treatment,
-            'photo' => EmployeeInsuranceCard::photoDataUriFromPath($beneficiary->photo_path),
+            'photo' => filled($beneficiary->photo_path) && $registration !== null
+                ? route('api.accepted-employees.family-member-photo', [$registration, $beneficiary])
+                : null,
             'created_at' => $beneficiary->created_at?->toIso8601String(),
             'updated_at' => $beneficiary->updated_at?->toIso8601String(),
         ];

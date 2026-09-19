@@ -180,10 +180,28 @@ final readonly class EmployeeInsuranceCard
 
         $contents = RegistrationDocuments::disk()->get($path);
 
-        if (! filled($contents)) {
+        if (! is_string($contents) || $contents === '') {
             return null;
         }
 
-        return 'data:'.RegistrationDocuments::mimeType($path).';base64,'.base64_encode($contents);
+        $mimeType = self::mimeTypeFromExtension($path);
+        $encoded = base64_encode($contents);
+        unset($contents);
+
+        return 'data:'.$mimeType.';base64,'.$encoded;
+    }
+
+    private static function mimeTypeFromExtension(string $path): string
+    {
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'heic' => 'image/heic',
+            'pdf' => 'application/pdf',
+            default => 'application/octet-stream',
+        };
     }
 }
