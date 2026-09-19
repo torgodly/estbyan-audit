@@ -2,7 +2,6 @@
 
 use App\Enums\BeneficiaryRelationship;
 use App\Enums\Gender;
-use App\Enums\RegistrationStatus;
 use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
 use Illuminate\Support\Facades\Config;
@@ -50,10 +49,21 @@ it('returns only accepted employees with their family members', function () {
         'employee_number' => '2000',
     ]);
     MedicalRegistration::factory()->declined()->create([
-        'employee_id' => $approved->employee_id,
-        'full_name' => 'أحمد مرفوض لاحقاً',
-        'employee_number' => '1000',
-        'status' => RegistrationStatus::Declined,
+        'full_name' => 'نورة المرفوضة',
+        'employee_number' => '3000',
+    ]);
+    MedicalRegistration::factory()->editing()->create([
+        'full_name' => 'ليلى قيد التعديل',
+        'employee_number' => '4000',
+    ]);
+    $replaced = MedicalRegistration::factory()->approved()->create([
+        'full_name' => 'قديم مقبول',
+        'employee_number' => '5000',
+    ]);
+    MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $replaced->employee_id,
+        'full_name' => 'قديم صار معلقاً',
+        'employee_number' => '5000',
     ]);
 
     $response = $this->withHeader('X-Api-Key', ACCEPTED_REGISTRATIONS_API_KEY)
@@ -103,7 +113,12 @@ it('returns only accepted employees with their family members', function () {
         ]);
 
     expect($response->json('data.0.family_members'))->toHaveCount(2)
+        ->and(collect($response->json('data'))->pluck('status')->unique()->all())->toBe(['approved'])
         ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('سالم المعلق')
+        ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('نورة المرفوضة')
+        ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('ليلى قيد التعديل')
+        ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('قديم مقبول')
+        ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('قديم صار معلقاً')
         ->and($response->json('data.0.card_number'))->toBe($approved->employee->card_number)
         ->and($response->json('data.0.family_members.0.card_number'))->toBe($spouse->card_number)
         ->and($response->json('data.0.family_members.1.id'))->toBe($son->id);

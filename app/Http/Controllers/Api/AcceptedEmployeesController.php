@@ -16,16 +16,17 @@ class AcceptedEmployeesController extends Controller
     {
         $registrations = MedicalRegistration::query()
             ->with(['employee.cardsDeliveredBy', 'beneficiaries', 'reviewer'])
-            ->where('status', RegistrationStatus::Approved)
+            ->where('status', RegistrationStatus::Approved->value)
             ->whereIn('id', function (Builder $query): void {
                 $query->selectRaw('max(id)')
                     ->from('medical_registrations')
-                    ->where('status', RegistrationStatus::Approved->value)
                     ->groupBy('employee_id');
             })
             ->orderBy('employee_number')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->filter(fn (MedicalRegistration $registration): bool => $registration->isApproved())
+            ->values();
 
         return response()->stream(function () use ($registrations, $request): void {
             echo '{"data":[';
