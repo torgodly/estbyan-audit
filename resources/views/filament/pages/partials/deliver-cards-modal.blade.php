@@ -44,6 +44,7 @@
         @if ($members !== [])
             <ul class="hr-deliver-modal__members">
                 @foreach ($members as $member)
+                    @continue(! ($member['scanned'] ?? false) && ! ($member['required'] ?? true))
                     <li>
                         <strong>{{ $member['name'] }}</strong>
                         <span>{{ $member['role_label'] }}@if (filled($member['card_label']) && $member['card_label'] !== '—') · {{ $member['card_label'] }} @endif</span>

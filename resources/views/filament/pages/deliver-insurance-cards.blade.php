@@ -15,7 +15,7 @@
                     <h3 class="hr-panel__title">تسليم عائلة واحدة</h3>
                     <p class="hr-panel__meta">
                         @if ($family)
-                            أكمل بطاقات هذه العائلة فقط، ثم سجّل التسليم من الأعلى.
+                            أكمل بطاقات هذه العائلة، ثم سجّل التسليم. الأب والأم غير مطلوبين.
                         @else
                             امسح أي بطاقة من العائلة للبدء. لا يمكن فتح عائلة ثانية قبل إنهاء الحالية.
                         @endif
@@ -142,6 +142,8 @@
                                             إزالة
                                         </button>
                                     @endif
+                                @elseif (! ($member['required'] ?? true))
+                                    <span class="hr-chip hr-chip--draft">غير مطلوب</span>
                                 @else
                                     <span class="hr-chip hr-chip--draft">لم يُمسح</span>
                                 @endif

@@ -72,7 +72,7 @@ class DeliverInsuranceCards extends Page
      */
     public function groups(): array
     {
-        return app(InsuranceCardScanService::class)->groups($this->scanned);
+        return app(InsuranceCardScanService::class)->groups($this->scanned, parentsOptional: true);
     }
 
     public function family(): ?array
@@ -174,7 +174,7 @@ class DeliverInsuranceCards extends Page
         if (! $this->canDeliver()) {
             Notification::make()
                 ->title('لا يمكن التسليم قبل مسح كل البطاقات')
-                ->body('يجب مسح بطاقة الموظف وكل أفراد العائلة.')
+                ->body('يجب مسح بطاقة الموظف وكل أفراد العائلة. بطاقات الأب والأم غير مطلوبة.')
                 ->warning()
                 ->send();
 

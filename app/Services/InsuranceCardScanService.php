@@ -48,7 +48,7 @@ class InsuranceCardScanService
      * @param  list<array<string, mixed>>  $scanned
      * @return list<array<string, mixed>>
      */
-    public function groups(array $scanned): array
+    public function groups(array $scanned, bool $parentsOptional = false): array
     {
         if ($scanned === []) {
             return [];
@@ -69,7 +69,7 @@ class InsuranceCardScanService
 
         $order = collect($scanned)->pluck('employee_id')->reverse()->unique()->values();
 
-        return $order->map(function (mixed $employeeId) use ($byEmployee, $employees): array {
+        return $order->map(function (mixed $employeeId) use ($byEmployee, $employees, $parentsOptional): array {
             $employeeId = (int) $employeeId;
             $hits = $byEmployee->get($employeeId) ?? collect();
             $employee = $employees->get($employeeId);
@@ -80,10 +80,15 @@ class InsuranceCardScanService
 
             if ($registration) {
                 $registration->loadMissing(['employee', 'beneficiaries']);
+                $beneficiaries = $registration->beneficiaries->keyBy(
+                    fn (Beneficiary $beneficiary): string => 'beneficiary-'.$beneficiary->id,
+                );
 
                 foreach (EmployeeInsuranceCard::collection($registration) as $card) {
                     $digits = InsuranceCardNumber::normalize($card->reference);
                     $hit = $digits ? $scannedByNumber->get($digits) : null;
+                    $beneficiary = $beneficiaries->get($card->personKey);
+                    $isOptionalParent = $parentsOptional && ($beneficiary?->relationship?->isParent() ?? false);
 
                     $members[] = [
                         'name' => $card->name,
@@ -93,6 +98,7 @@ class InsuranceCardScanService
                         'scanned' => $hit !== null,
                         'is_printed' => $card->isPrinted,
                         'person_key' => $card->personKey,
+                        'required' => ! $isOptionalParent,
                     ];
 
                     if ($digits) {
@@ -110,11 +116,17 @@ class InsuranceCardScanService
                     'scanned' => true,
                     'is_printed' => (bool) $hit['is_printed'],
                     'person_key' => $hit['person_key'],
+                    'required' => true,
                 ];
             }
 
             $employeeHit = $hits->firstWhere('kind', 'employee');
             $deliveredTo = $employee?->cards_delivered_to;
+            $requiredMembers = collect($members)->where('required', true);
+            $expectedCount = $parentsOptional ? $requiredMembers->count() : count($members);
+            $scannedCount = $parentsOptional
+                ? $requiredMembers->where('scanned', true)->count()
+                : $hits->count();
 
             return [
                 'employee_id' => $employeeId,
@@ -125,9 +137,9 @@ class InsuranceCardScanService
                     ? MedicalRegistrationResource::getUrl('view', ['record' => $registration])
                     : null,
                 'reference' => $registration?->reference_number,
-                'scanned_count' => $hits->count(),
-                'expected_count' => count($members),
-                'complete' => count($members) > 0 && $hits->count() >= count($members),
+                'scanned_count' => $scannedCount,
+                'expected_count' => $expectedCount,
+                'complete' => $expectedCount > 0 && $scannedCount >= $expectedCount,
                 'members' => $members,
                 'is_delivered' => $employee?->cardsAreDelivered() ?? false,
                 'delivered_to' => $deliveredTo?->value,

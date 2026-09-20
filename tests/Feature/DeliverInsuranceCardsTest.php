@@ -135,6 +135,50 @@ it('cannot mark a family delivered until every card is scanned', function () {
         ->and($registration->employee->fresh()->cards_delivered_to)->toBeNull();
 });
 
+it('can deliver a family without scanning the parents', function () {
+    $hr = User::factory()->hr()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'gender' => Gender::Male,
+    ]);
+    $spouse = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'فاطمة الزوجة',
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'أحمد الأب',
+        'relationship' => BeneficiaryRelationship::Father,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'منى الأم',
+        'relationship' => BeneficiaryRelationship::Mother,
+    ]);
+    markFamilyCardsPrinted($registration);
+
+    $this->actingAs($hr);
+
+    Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', $registration->employee->card_number)
+        ->call('scanCard')
+        ->assertSee('ناقص 1')
+        ->assertSee('غير مطلوب')
+        ->assertActionDisabled('markDelivered')
+        ->set('scan', $spouse->fresh()->card_number)
+        ->call('scanCard')
+        ->assertSee('جاهزة للتسليم')
+        ->assertDontSee('ناقص')
+        ->assertActionEnabled('markDelivered')
+        ->callAction('markDelivered', [
+            'delivered_to' => CardDeliveryRecipient::Employee->value,
+        ])
+        ->assertNotified('تم تسليم بطاقات الموظف '.$registration->employee->full_name.' بنجاح');
+
+    expect($registration->employee->fresh()->cardsAreDelivered())->toBeTrue()
+        ->and($registration->employee->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Employee);
+});
+
 it('shows a custom delivery confirmation modal', function () {
     $hr = User::factory()->hr()->create();
     $registration = MedicalRegistration::factory()->submitted()->create([
