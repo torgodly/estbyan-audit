@@ -50,6 +50,11 @@ class DeliverInsuranceCards extends Page
      */
     public array $scanned = [];
 
+    /**
+     * @var array{name: string, recipient: string}|null
+     */
+    public ?array $deliveryNotice = null;
+
     public static function canAccess(): bool
     {
         $user = Auth::user();
@@ -142,6 +147,7 @@ class DeliverInsuranceCards extends Page
         }
 
         $this->scanned[] = $hit->toArray();
+        $this->deliveryNotice = null;
     }
 
     public function removeCard(string $cardNumber): void
@@ -203,19 +209,16 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
-        $wasDelivered = $employee->cardsAreDelivered();
         $employee->markCardsDelivered($user, $recipient);
         $this->scanned = [];
+        $this->deliveryNotice = [
+            'name' => $employee->full_name,
+            'recipient' => $recipient->getLabel(),
+        ];
 
         Notification::make()
-            ->title($wasDelivered ? 'تم تحديث التسليم' : 'تم التسليم')
-            ->body(
-                ($wasDelivered ? 'حُدّث تسليم بطاقات ' : 'سُلّمت بطاقات ')
-                .$employee->full_name
-                .' إلى '
-                .$recipient->getLabel()
-                .'.'
-            )
+            ->title('تم تسليم بطاقات الموظف '.$employee->full_name.' بنجاح')
+            ->body('إلى '.$recipient->getLabel())
             ->success()
             ->send();
     }

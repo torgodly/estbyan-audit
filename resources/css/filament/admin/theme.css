@@ -1219,6 +1219,36 @@
     margin-inline: auto;
 }
 
+.hr-deliver-done {
+    border: 1px solid var(--hr-yes-line);
+    background: var(--hr-yes-bg);
+    border-radius: 0.75rem;
+    padding: 1rem 1.15rem;
+}
+
+.hr-deliver-done__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.7;
+    color: var(--hr-yes-ink);
+}
+
+.hr-deliver-done__title span {
+    color: var(--hr-navy);
+}
+
+.dark .hr-deliver-done__title span {
+    color: var(--hr-teal);
+}
+
+.hr-deliver-done__meta {
+    margin: 0.2rem 0 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--hr-yes-ink);
+}
+
 .hr-deliver__scan-body {
     padding: 0.85rem 1.1rem;
 }

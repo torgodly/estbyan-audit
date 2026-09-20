@@ -202,7 +202,8 @@ it('shows prior delivery details and preselects the recipient for updates', func
             'delivered_to' => CardDeliveryRecipient::Employee->value,
         ])
         ->callMountedAction()
-        ->assertNotified();
+        ->assertNotified('تم تسليم بطاقات الموظف '.$registration->employee->full_name.' بنجاح')
+        ->assertSee($registration->employee->full_name);
 
     expect($registration->employee->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Employee);
 });
@@ -229,7 +230,11 @@ it('delivers a complete family to the employee or administration', function () {
         ->callAction('markDelivered', [
             'delivered_to' => CardDeliveryRecipient::Administration->value,
         ])
-        ->assertNotified()
+        ->assertNotified('تم تسليم بطاقات الموظف '.$registration->employee->full_name.' بنجاح')
+        ->assertSee('تم تسليم بطاقات الموظف')
+        ->assertSee($registration->employee->full_name)
+        ->assertSee('بنجاح')
+        ->assertSee('إلى الإدارة')
         ->assertSet('scanned', []);
 
     $employee = $registration->employee->fresh();

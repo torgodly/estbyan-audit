@@ -48,6 +48,17 @@
             </div>
         </section>
 
+        @if ($this->deliveryNotice)
+            <section class="hr-deliver-done" role="status">
+                <p class="hr-deliver-done__title">
+                    تم تسليم بطاقات الموظف
+                    <span>{{ $this->deliveryNotice['name'] }}</span>
+                    بنجاح
+                </p>
+                <p class="hr-deliver-done__meta">إلى {{ $this->deliveryNotice['recipient'] }}</p>
+            </section>
+        @endif
+
         @if ($family === null)
             <section class="hr-panel">
                 <div class="hr-panel__body">
