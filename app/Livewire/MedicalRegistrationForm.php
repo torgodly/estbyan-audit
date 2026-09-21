@@ -11,6 +11,7 @@ use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Rules\LibyanNationalId;
+use App\Support\FamilyMemberIdentityGuard;
 use App\Support\InsuranceCardNumber;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\LibyanPhoneNumber;
@@ -622,6 +623,21 @@ class MedicalRegistrationForm extends Component
             ]);
         }
 
+        $duplicateMessage = FamilyMemberIdentityGuard::message(
+            nationalId: $isLibyan ? $this->beneficiaryNationalId : null,
+            passportNumber: $isLibyan ? null : $this->beneficiaryPassportNumber,
+            nationality: $isLibyan ? null : $this->beneficiaryNationality,
+            registrationId: $registration->id,
+            familyMembers: $this->beneficiaries,
+            ignoreIndex: $this->editingBeneficiaryIndex,
+        );
+
+        if ($duplicateMessage !== null) {
+            $this->failValidation([
+                $isLibyan ? 'beneficiaryNationalId' : 'beneficiaryPassportNumber' => $duplicateMessage,
+            ]);
+        }
+
         $photoPath = $this->beneficiaryExistingPhotoPath;
 
         if ($this->beneficiaryPhoto instanceof TemporaryUploadedFile) {
@@ -886,6 +902,23 @@ class MedicalRegistrationForm extends Component
             $this->addVisibleError('submit', 'يجب إرفاق صورة لكل مستفيد قبل الإرسال');
 
             return;
+        }
+
+        foreach ($this->beneficiaries as $index => $beneficiary) {
+            $duplicateMessage = FamilyMemberIdentityGuard::message(
+                nationalId: $beneficiary['national_id'] ?? null,
+                passportNumber: $beneficiary['passport_number'] ?? null,
+                nationality: $beneficiary['nationality'] ?? null,
+                registrationId: $registration->id,
+                familyMembers: $this->beneficiaries,
+                ignoreIndex: $index,
+            );
+
+            if ($duplicateMessage !== null) {
+                $this->addVisibleError('submit', $duplicateMessage);
+
+                return;
+            }
         }
 
         if (! $registration->isEditableByEmployee()) {

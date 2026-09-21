@@ -4,6 +4,7 @@ use App\Enums\BloodType;
 use App\Enums\Gender;
 use App\Enums\RegistrationStatus;
 use App\Livewire\MedicalRegistrationForm;
+use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Settings\RegistrationSettings;
@@ -1321,4 +1322,94 @@ it('downloads a reference card for the session registration', function () {
         ->get(route('registration.reference-card', $registration))
         ->assertSuccessful()
         ->assertHeader('content-type', 'image/png');
+});
+
+it('rejects adding an employee as a family member including the employee himself', function () {
+    Storage::fake(RegistrationDocuments::diskName());
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1977);
+    $wifeNationalId = LibyanNationalId::generate(Gender::Female, 1984);
+
+    Employee::factory()->create([
+        'employee_number' => '6101',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'أحمد الموظف',
+        'workplace' => 'hr_general',
+    ]);
+    Employee::factory()->create([
+        'employee_number' => '6102',
+        'national_id' => $wifeNationalId,
+        'full_name' => 'فاطمة الموظفة',
+        'workplace' => 'hr_general',
+    ]);
+
+    $form = Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '6101')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('maritalStatus', 'married')
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryName', 'أحمد الموظف')
+        ->set('beneficiaryRelationship', 'father')
+        ->set('beneficiaryNationalId', $employeeNationalId)
+        ->set('beneficiaryDateOfBirth', '1977-01-01')
+        ->set('beneficiaryBloodType', 'a_positive')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('father.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasErrors(['beneficiaryNationalId']);
+
+    expect(Beneficiary::query()->where('national_id', $employeeNationalId)->exists())->toBeFalse();
+
+    $form
+        ->set('beneficiaryName', 'فاطمة الموظفة')
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryNationalId', $wifeNationalId)
+        ->set('beneficiaryDateOfBirth', '1984-01-01')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('wife.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasErrors(['beneficiaryNationalId']);
+
+    expect(Beneficiary::query()->where('national_id', $wifeNationalId)->exists())->toBeFalse();
+});
+
+it('rejects adding a family member who is already registered under another employee', function () {
+    Storage::fake(RegistrationDocuments::diskName());
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1980);
+    $motherNationalId = LibyanNationalId::generate(Gender::Female, 1955);
+
+    Employee::factory()->create([
+        'employee_number' => '6103',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'سامي الأخ',
+        'workplace' => 'hr_general',
+    ]);
+
+    $other = MedicalRegistration::factory()->approved()->create();
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $other->id,
+        'full_name' => 'منى الأم',
+        'relationship' => 'mother',
+        'national_id' => $motherNationalId,
+        'date_of_birth' => '1955-03-01',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '6103')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('maritalStatus', 'married')
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryName', 'منى الأم')
+        ->set('beneficiaryRelationship', 'mother')
+        ->set('beneficiaryNationalId', $motherNationalId)
+        ->set('beneficiaryDateOfBirth', '1955-03-01')
+        ->set('beneficiaryBloodType', 'a_positive')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('mother.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasErrors(['beneficiaryNationalId']);
+
+    expect(Beneficiary::query()->where('national_id', $motherNationalId)->count())->toBe(1);
 });
