@@ -1,13 +1,22 @@
 <?php
 
 use App\Enums\BeneficiaryRelationship;
+use App\Enums\CardDeliveryRecipient;
 use App\Enums\Gender;
 use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
+use App\Models\User;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 
 const ACCEPTED_REGISTRATIONS_API_KEY = 'test-accepted-registrations-key';
+
+function markCardsDelivered(MedicalRegistration $registration): void
+{
+    $hr = User::factory()->hr()->create();
+
+    $registration->employee->markCardsDelivered($hr, CardDeliveryRecipient::Employee);
+}
 
 it('rejects requests without the custom api key', function () {
     $this->getJson('/api/accepted-employees')
@@ -33,6 +42,7 @@ it('returns only accepted employees with their family members', function () {
         'employee_number' => '1000',
         'gender' => Gender::Male,
     ]);
+    markCardsDelivered($approved);
     $spouse = Beneficiary::factory()->create([
         'medical_registration_id' => $approved->id,
         'full_name' => 'فاطمة أحمد',
@@ -42,6 +52,11 @@ it('returns only accepted employees with their family members', function () {
         'medical_registration_id' => $approved->id,
         'full_name' => 'يوسف أحمد',
         'relationship' => BeneficiaryRelationship::Son,
+    ]);
+
+    $approvedNotDelivered = MedicalRegistration::factory()->approved()->create([
+        'full_name' => 'مقبول بلا تسليم',
+        'employee_number' => '1500',
     ]);
 
     MedicalRegistration::factory()->submitted()->create([
@@ -60,6 +75,7 @@ it('returns only accepted employees with their family members', function () {
         'full_name' => 'قديم مقبول',
         'employee_number' => '5000',
     ]);
+    markCardsDelivered($replaced);
     MedicalRegistration::factory()->submitted()->create([
         'employee_id' => $replaced->employee_id,
         'full_name' => 'قديم صار معلقاً',
@@ -114,6 +130,7 @@ it('returns only accepted employees with their family members', function () {
 
     expect($response->json('data.0.family_members'))->toHaveCount(2)
         ->and(collect($response->json('data'))->pluck('status')->unique()->all())->toBe(['approved'])
+        ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('مقبول بلا تسليم')
         ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('سالم المعلق')
         ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('نورة المرفوضة')
         ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('ليلى قيد التعديل')
@@ -121,7 +138,8 @@ it('returns only accepted employees with their family members', function () {
         ->and(collect($response->json('data'))->pluck('full_name')->all())->not->toContain('قديم صار معلقاً')
         ->and($response->json('data.0.card_number'))->toBe($approved->employee->card_number)
         ->and($response->json('data.0.family_members.0.card_number'))->toBe($spouse->card_number)
-        ->and($response->json('data.0.family_members.1.id'))->toBe($son->id);
+        ->and($response->json('data.0.family_members.1.id'))->toBe($son->id)
+        ->and($approvedNotDelivered->employee->fresh()->cardsAreDelivered())->toBeFalse();
 });
 
 it('returns photo urls and serves the image with the same api key', function () {
@@ -135,6 +153,7 @@ it('returns photo urls and serves the image with the same api key', function () 
         'employee_photo_path' => 'registrations/employee.png',
         'family_status_document_path' => 'registrations/family.pdf',
     ]);
+    markCardsDelivered($approved);
     $spouse = Beneficiary::factory()->create([
         'medical_registration_id' => $approved->id,
         'full_name' => 'فاطمة أحمد',

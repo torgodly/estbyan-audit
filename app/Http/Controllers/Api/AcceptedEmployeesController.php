@@ -17,6 +17,9 @@ class AcceptedEmployeesController extends Controller
         $registrations = MedicalRegistration::query()
             ->with(['employee.cardsDeliveredBy', 'beneficiaries', 'reviewer'])
             ->where('status', RegistrationStatus::Approved->value)
+            ->whereHas('employee', function ($query): void {
+                $query->whereNotNull('cards_delivered_at');
+            })
             ->whereIn('id', function (Builder $query): void {
                 $query->selectRaw('max(id)')
                     ->from('medical_registrations')
@@ -25,7 +28,8 @@ class AcceptedEmployeesController extends Controller
             ->orderBy('employee_number')
             ->orderBy('id')
             ->get()
-            ->filter(fn (MedicalRegistration $registration): bool => $registration->isApproved())
+            ->filter(fn (MedicalRegistration $registration): bool => $registration->isApproved()
+                && $registration->employee?->cardsAreDelivered() === true)
             ->values();
 
         return response()->stream(function () use ($registrations, $request): void {

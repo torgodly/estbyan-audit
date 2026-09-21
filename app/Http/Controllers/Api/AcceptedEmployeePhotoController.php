@@ -28,7 +28,12 @@ class AcceptedEmployeePhotoController extends Controller
 
     private function ensureApproved(MedicalRegistration $registration): void
     {
-        abort_unless($registration->isApproved(), 404);
+        $registration->loadMissing('employee');
+
+        abort_unless(
+            $registration->isApproved() && $registration->employee?->cardsAreDelivered() === true,
+            404,
+        );
     }
 
     private function file(?string $path): StreamedResponse
