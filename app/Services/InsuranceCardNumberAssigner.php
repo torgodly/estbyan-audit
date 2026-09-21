@@ -33,10 +33,6 @@ class InsuranceCardNumberAssigner
 
     public function fillBeneficiary(Beneficiary $beneficiary, bool $replaceLegacy = false): void
     {
-        if (! $this->shouldReplace($beneficiary->card_number, $replaceLegacy)) {
-            return;
-        }
-
         $employee = $this->employeeFor($beneficiary);
 
         if ($employee === null) {
@@ -57,16 +53,38 @@ class InsuranceCardNumberAssigner
             return;
         }
 
+        $sharedCard = $this->cardNumberTakenBySomeoneElse($beneficiary);
+
+        if (
+            ! $this->shouldReplace($beneficiary->card_number, $replaceLegacy)
+            && ! $sharedCard
+        ) {
+            return;
+        }
+
         $beneficiary->card_number = $this->nextUniqueCardNumber();
+
+        if ($sharedCard) {
+            $beneficiary->card_printed_at = null;
+        }
     }
 
     public function ensureBeneficiary(Beneficiary $beneficiary, bool $replaceLegacy = false): void
     {
         $this->fillBeneficiary($beneficiary, $replaceLegacy);
 
-        if ($beneficiary->exists && $beneficiary->isDirty('card_number')) {
+        if ($beneficiary->exists && $beneficiary->isDirty(['card_number', 'card_printed_at'])) {
             $beneficiary->save();
         }
+    }
+
+    public function refreshAfterIdentityChange(Beneficiary $beneficiary): void
+    {
+        if (! $beneficiary->isDirty(['national_id', 'passport_number', 'nationality'])) {
+            return;
+        }
+
+        $this->fillBeneficiary($beneficiary);
     }
 
     public function nextUniqueCardNumber(): string
@@ -114,6 +132,10 @@ class InsuranceCardNumberAssigner
             $query->where('national_id', $beneficiary->national_id);
         } elseif (filled($beneficiary->passport_number)) {
             $query->where('passport_number', $beneficiary->passport_number);
+
+            if (filled($beneficiary->nationality)) {
+                $query->where('nationality', $beneficiary->nationality);
+            }
         } elseif (filled($beneficiary->full_name) && $beneficiary->date_of_birth) {
             $query->where('full_name', $beneficiary->full_name)
                 ->whereDate('date_of_birth', $beneficiary->date_of_birth);
@@ -132,6 +154,27 @@ class InsuranceCardNumberAssigner
     {
         return Employee::query()->where('card_number', $number)->exists()
             || Beneficiary::query()->where('card_number', $number)->exists();
+    }
+
+    private function cardNumberTakenBySomeoneElse(Beneficiary $beneficiary): bool
+    {
+        $number = $beneficiary->card_number;
+
+        if (! InsuranceCardNumber::isValid($number)) {
+            return false;
+        }
+
+        if (Employee::query()->where('card_number', $number)->exists()) {
+            return true;
+        }
+
+        $query = Beneficiary::query()->where('card_number', $number);
+
+        if ($beneficiary->exists) {
+            $query->whereKeyNot($beneficiary->id);
+        }
+
+        return $query->exists();
     }
 
     private function employeeFor(Beneficiary $beneficiary): ?Employee

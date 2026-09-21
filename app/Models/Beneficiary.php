@@ -122,6 +122,10 @@ class Beneficiary extends Model
 
         static::saving(function (Beneficiary $beneficiary): void {
             $beneficiary->has_chronic_condition = (bool) $beneficiary->has_chronic_conditions;
+
+            if ($beneficiary->exists) {
+                app(InsuranceCardNumberAssigner::class)->refreshAfterIdentityChange($beneficiary);
+            }
         });
     }
 }

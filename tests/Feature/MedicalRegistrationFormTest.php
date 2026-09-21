@@ -1413,3 +1413,45 @@ it('rejects adding a family member who is already registered under another emplo
 
     expect(Beneficiary::query()->where('national_id', $motherNationalId)->count())->toBe(1);
 });
+
+it('rejects adding a non-libyan family member whose passport is already used', function () {
+    Storage::fake(RegistrationDocuments::diskName());
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1978);
+
+    Employee::factory()->create([
+        'employee_number' => '6201',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'موظف ليبي',
+        'workplace' => 'hr_general',
+    ]);
+
+    $other = MedicalRegistration::factory()->approved()->create();
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $other->id,
+        'full_name' => 'زوجة موجودة',
+        'relationship' => 'spouse',
+        'is_libyan' => false,
+        'nationality' => 'egyptian',
+        'national_id' => null,
+        'passport_number' => 'A1234567',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '6201')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('maritalStatus', 'married')
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryName', 'زوجة جديدة')
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryIsLibyan', false)
+        ->set('beneficiaryNationality', 'egyptian')
+        ->set('beneficiaryPassportNumber', 'A1234567')
+        ->set('beneficiaryDateOfBirth', '1985-01-01')
+        ->set('beneficiaryBloodType', 'a_positive')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('spouse.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasErrors(['beneficiaryPassportNumber']);
+});
