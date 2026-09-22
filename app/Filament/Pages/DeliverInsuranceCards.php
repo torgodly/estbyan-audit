@@ -116,16 +116,6 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
-        if (! $hit->isPrinted) {
-            Notification::make()
-                ->title('البطاقة غير مطبوعة')
-                ->body('لا يمكن تسليم بطاقة لم تُطبع بعد. يجب طباعتها من صفحة المسح أولاً.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
         $activeEmployeeId = $this->activeEmployeeId();
 
         if ($activeEmployeeId !== null && $hit->employeeId !== $activeEmployeeId) {
@@ -210,6 +200,7 @@ class DeliverInsuranceCards extends Page
         }
 
         $employee->markCardsDelivered($user, $recipient);
+        app(InsuranceCardScanService::class)->markPrinted($this->scanned);
         $this->scanned = [];
         $this->deliveryNotice = [
             'name' => $employee->full_name,

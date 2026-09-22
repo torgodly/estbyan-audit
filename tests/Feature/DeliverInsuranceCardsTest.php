@@ -48,22 +48,40 @@ it('lets hr users open the delivery page', function () {
         ->assertActionDisabled('markDelivered');
 });
 
-it('rejects cards that have not been printed yet', function () {
+it('accepts unprinted cards and marks them printed when delivered', function () {
     $hr = User::factory()->hr()->create();
-    $registration = MedicalRegistration::factory()->submitted()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'gender' => Gender::Male,
+    ]);
+    $spouse = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
     $employee = $registration->employee;
 
-    expect($employee->cardIsPrinted())->toBeFalse();
+    expect($employee->cardIsPrinted())->toBeFalse()
+        ->and($spouse->fresh()->cardIsPrinted())->toBeFalse();
 
     $this->actingAs($hr);
 
-    $page = Livewire::test(DeliverInsuranceCards::class)
+    Livewire::test(DeliverInsuranceCards::class)
         ->set('scan', $employee->card_number)
         ->call('scanCard')
-        ->assertNotified();
+        ->set('scan', $spouse->fresh()->card_number)
+        ->call('scanCard')
+        ->assertSee('جاهزة للتسليم')
+        ->callAction('markDelivered', [
+            'delivered_to' => CardDeliveryRecipient::Administration->value,
+        ])
+        ->assertNotified('تم تسليم بطاقات الموظف '.$employee->full_name.' بنجاح');
 
-    expect($page->instance()->scanned)->toBe([])
-        ->and($page->instance()->family())->toBeNull();
+    $employee = $employee->fresh();
+    $spouse = $spouse->fresh();
+
+    expect($employee->cardsAreDelivered())->toBeTrue()
+        ->and($employee->cards_delivered_to)->toBe(CardDeliveryRecipient::Administration)
+        ->and($employee->cardIsPrinted())->toBeTrue()
+        ->and($spouse->cardIsPrinted())->toBeTrue();
 });
 
 it('accepts printed cards for delivery', function () {
