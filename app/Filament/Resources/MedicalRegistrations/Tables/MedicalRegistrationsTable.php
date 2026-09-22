@@ -4,6 +4,7 @@ namespace App\Filament\Resources\MedicalRegistrations\Tables;
 
 use App\Enums\RegistrationStatus;
 use App\Models\MedicalRegistration;
+use App\Models\User;
 use App\Support\InsuranceCardFamily;
 use App\Support\RegistrationDocuments;
 use Filament\Actions\ViewAction;
@@ -15,11 +16,14 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class MedicalRegistrationsTable
 {
     public static function configure(Table $table): Table
     {
+        $canManageInsuranceCards = self::canManageInsuranceCards();
+
         return $table
             ->defaultSort('submitted_at', 'desc')
             ->columns([
@@ -142,11 +146,35 @@ class MedicalRegistrationsTable
                         false: fn (Builder $query): Builder => InsuranceCardFamily::constrainRegistrationComplete($query),
                         blank: fn (Builder $query): Builder => $query,
                     ),
+                TernaryFilter::make('employee_card_printed')
+                    ->label('طباعة الموظف')
+                    ->placeholder('الكل')
+                    ->trueLabel('مطبوع فقط')
+                    ->falseLabel('غير مطبوع')
+                    ->visible($canManageInsuranceCards)
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereHas(
+                            'employee',
+                            fn (Builder $employeeQuery): Builder => $employeeQuery->whereNotNull('card_printed_at'),
+                        ),
+                        false: fn (Builder $query): Builder => $query->whereHas(
+                            'employee',
+                            fn (Builder $employeeQuery): Builder => $employeeQuery->whereNull('card_printed_at'),
+                        ),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
             ])
             ->recordActions([
                 ViewAction::make()
                     ->label('الملف'),
             ])
             ->toolbarActions([]);
+    }
+
+    private static function canManageInsuranceCards(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->canManageInsuranceCards();
     }
 }

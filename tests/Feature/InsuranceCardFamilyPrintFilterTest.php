@@ -116,3 +116,40 @@ it('filters registration families the same way and shows counts as text', functi
         ->assertCanSeeTableRecords([$complete])
         ->assertCanNotSeeTableRecords([$partial]);
 });
+
+it('shows the printed employee filter to support users only', function () {
+    $support = User::factory()->smartCare()->create();
+    $hr = User::factory()->hr()->create();
+
+    $printedEmployee = Employee::factory()->create();
+    $printed = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $printedEmployee->id,
+        'full_name' => 'موظف مطبوع',
+    ]);
+    $printedEmployee->markCardPrinted();
+
+    $unprintedEmployee = Employee::factory()->create();
+    $unprinted = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $unprintedEmployee->id,
+        'full_name' => 'موظف غير مطبوع',
+    ]);
+
+    $this->actingAs($hr);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->assertSuccessful()
+        ->assertDontSee('مطبوع فقط')
+        ->assertCanSeeTableRecords([$printed, $unprinted]);
+
+    $this->actingAs($support);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->assertSuccessful()
+        ->assertSee('مطبوع فقط')
+        ->filterTable('employee_card_printed', true)
+        ->assertCanSeeTableRecords([$printed])
+        ->assertCanNotSeeTableRecords([$unprinted])
+        ->filterTable('employee_card_printed', false)
+        ->assertCanSeeTableRecords([$unprinted])
+        ->assertCanNotSeeTableRecords([$printed]);
+});
