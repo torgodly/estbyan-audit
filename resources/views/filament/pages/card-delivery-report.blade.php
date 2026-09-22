@@ -49,8 +49,6 @@
                                     <tr>
                                         <th>الموظف</th>
                                         <th>الرقم التأميني</th>
-                                        <th>أفراد العائلة</th>
-                                        <th>البطاقات</th>
                                         <th>جهة التسليم</th>
                                         <th>تاريخ التسليم</th>
                                         <th>بواسطة</th>
@@ -66,8 +64,6 @@
                                                 @endif
                                             </td>
                                             <td>{{ $row['employee_number'] }}</td>
-                                            <td>{{ $row['family_members'] }}</td>
-                                            <td>{{ $row['total_cards'] }}</td>
                                             <td>{{ $row['delivered_to_label'] }}</td>
                                             <td>{{ $row['delivered_at'] ?? '—' }}</td>
                                             <td>{{ $row['delivered_by_name'] }}</td>
