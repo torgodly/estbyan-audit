@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Employee;
 use App\Models\User;
 use App\Services\InsuranceCardScanService;
 use App\Support\InsuranceCardNumber;
@@ -100,6 +101,18 @@ class ScanInsuranceCards extends Page
             return;
         }
 
+        $employee = Employee::query()->find($hit->employeeId);
+
+        if ($employee?->cardsAreDelivered()) {
+            Notification::make()
+                ->title('تم التسليم مسبقاً — للعرض فقط')
+                ->body('لا يمكن تعليم أو تعديل بطاقات موظف مُسلَّم.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         $existingIndex = collect($this->scanned)->search(
             fn (array $item): bool => $item['card_number'] === $hit->cardNumber,
         );
@@ -174,6 +187,21 @@ class ScanInsuranceCards extends Page
         if ($this->scanned === []) {
             Notification::make()
                 ->title('امسح بطاقة واحدة على الأقل')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $deliveredEmployeeIds = Employee::query()
+            ->whereIn('id', collect($this->scanned)->pluck('employee_id')->unique()->all())
+            ->whereNotNull('cards_delivered_at')
+            ->pluck('id');
+
+        if ($deliveredEmployeeIds->isNotEmpty()) {
+            Notification::make()
+                ->title('تم التسليم مسبقاً — للعرض فقط')
+                ->body('أزل بطاقات الموظفين المُسلَّمين قبل التعليم كمطبوعة.')
                 ->warning()
                 ->send();
 

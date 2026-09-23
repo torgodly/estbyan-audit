@@ -86,7 +86,7 @@
                             <span class="hr-chip hr-chip--submitted">مُسلّمة</span>
                         @endif
                         @if ($family['complete'])
-                            <span class="hr-chip hr-chip--approved">{{ $family['is_delivered'] ? 'جاهزة للتحديث' : 'جاهزة للتسليم' }}</span>
+                            <span class="hr-chip hr-chip--approved">{{ $family['is_delivered'] ? 'للعرض فقط' : 'جاهزة للتسليم' }}</span>
                         @else
                             <span class="hr-chip hr-chip--editing">ناقص {{ $family['expected_count'] - $family['scanned_count'] }}</span>
                         @endif
@@ -98,7 +98,7 @@
 
                 @if ($family['is_delivered'])
                     <div class="hr-deliver-status">
-                        <strong>تم التسليم سابقاً</strong>
+                        <strong>تم التسليم سابقاً — للعرض فقط</strong>
                         <span>
                             إلى {{ $family['delivered_to_label'] ?? '—' }}
                             @if (filled($family['delivered_at']))

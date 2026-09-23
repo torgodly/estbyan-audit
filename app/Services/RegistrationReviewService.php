@@ -57,6 +57,10 @@ class RegistrationReviewService
 
     public function canApprove(MedicalRegistration $registration): bool
     {
+        if ($registration->isLockedByCardDelivery()) {
+            return false;
+        }
+
         return in_array($registration->status, [
             RegistrationStatus::Submitted,
             RegistrationStatus::Declined,
@@ -65,6 +69,10 @@ class RegistrationReviewService
 
     public function canDecline(MedicalRegistration $registration): bool
     {
+        if ($registration->isLockedByCardDelivery()) {
+            return false;
+        }
+
         return in_array($registration->status, [
             RegistrationStatus::Submitted,
             RegistrationStatus::Approved,

@@ -224,11 +224,10 @@ it('shows a custom delivery confirmation modal', function () {
     expect($modal)
         ->toContain('عائلة جاهزة للتسليم')
         ->toContain('إلى من سُلّمت البطاقات؟')
-        ->toContain('تحديث جهة التسليم')
         ->toContain('hr-deliver-choice');
 });
 
-it('shows prior delivery details and preselects the recipient for updates', function () {
+it('treats already delivered families as view-only and refuses delivery updates', function () {
     $hr = User::factory()->hr()->create([
         'name' => 'موظف الموارد البشرية',
     ]);
@@ -250,24 +249,16 @@ it('shows prior delivery details and preselects the recipient for updates', func
         ->set('scan', $spouse->fresh()->card_number)
         ->call('scanCard')
         ->assertSee('مُسلّمة')
-        ->assertSee('تم التسليم سابقاً')
+        ->assertSee('تم التسليم سابقاً — للعرض فقط')
         ->assertSee('إلى الإدارة')
         ->assertSee('بواسطة موظف الموارد البشرية')
-        ->assertSee('تحديث التسليم')
-        ->assertActionEnabled('markDelivered')
-        ->mountAction('markDelivered')
-        ->assertActionMounted('markDelivered')
-        ->assertSchemaStateSet([
-            'delivered_to' => CardDeliveryRecipient::Administration->value,
-        ])
-        ->setActionData([
-            'delivered_to' => CardDeliveryRecipient::Employee->value,
-        ])
-        ->callMountedAction()
-        ->assertNotified('تم تسليم بطاقات الموظف '.$registration->employee->full_name.' بنجاح')
-        ->assertSee($registration->employee->full_name);
+        ->assertSee('للعرض فقط')
+        ->assertDontSee('تحديث التسليم')
+        ->assertActionDisabled('markDelivered')
+        ->call('markDelivered', CardDeliveryRecipient::Employee->value)
+        ->assertNotified('تم التسليم مسبقاً — للعرض فقط');
 
-    expect($registration->employee->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Employee);
+    expect($registration->employee->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Administration);
 });
 
 it('delivers a complete family to the employee or administration', function () {

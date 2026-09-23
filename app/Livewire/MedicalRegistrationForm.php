@@ -1818,7 +1818,11 @@ class MedicalRegistrationForm extends Component
 
     protected function approvedLockMessage(MedicalRegistration $registration): string
     {
-        $message = 'تم قبول استبيانك من إدارة الديوان. أنت بانتظار استكمال باقي الإجراءات، ولا يمكن تعديل الاستبيان.';
+        if ($registration->isLockedByCardDelivery()) {
+            $message = 'تم تسليم بطاقاتك. الاستبيان للعرض فقط ولا يمكن تعديله.';
+        } else {
+            $message = 'تم قبول استبيانك من إدارة الديوان. أنت بانتظار استكمال باقي الإجراءات، ولا يمكن تعديل الاستبيان.';
+        }
 
         if (filled($registration->reference_number)) {
             $message .= ' رقم المرجع: '.$registration->reference_number;

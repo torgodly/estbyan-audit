@@ -84,7 +84,9 @@ class DeliverInsuranceCards extends Page
     {
         $family = $this->family();
 
-        return $family !== null && $family['complete'] === true;
+        return $family !== null
+            && $family['complete'] === true
+            && ($family['is_delivered'] ?? false) === false;
     }
 
     public function scanCard(): void
@@ -161,6 +163,18 @@ class DeliverInsuranceCards extends Page
     {
         abort_unless(static::canAccess(), 403);
 
+        $family = $this->family();
+
+        if (($family['is_delivered'] ?? false) === true) {
+            Notification::make()
+                ->title('تم التسليم مسبقاً — للعرض فقط')
+                ->body('لا يمكن تعديل أو إعادة تسليم بطاقات موظف مُسلَّم.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         if (! $this->canDeliver()) {
             Notification::make()
                 ->title('لا يمكن التسليم قبل مسح كل البطاقات')
@@ -187,7 +201,6 @@ class DeliverInsuranceCards extends Page
         $user = Auth::user();
         assert($user instanceof User);
 
-        $family = $this->family();
         $employee = Employee::query()->find($family['employee_id'] ?? null);
 
         if ($employee === null) {
@@ -199,8 +212,18 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
-        $employee->markCardsDelivered($user, $recipient);
+        if ($employee->cardsAreDelivered()) {
+            Notification::make()
+                ->title('تم التسليم مسبقاً — للعرض فقط')
+                ->body('لا يمكن تعديل أو إعادة تسليم بطاقات موظف مُسلَّم.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         app(InsuranceCardScanService::class)->markPrinted($this->scanned);
+        $employee->markCardsDelivered($user, $recipient);
         $this->scanned = [];
         $this->deliveryNotice = [
             'name' => $employee->full_name,
@@ -218,11 +241,11 @@ class DeliverInsuranceCards extends Page
     {
         return [
             Action::make('markDelivered')
-                ->label(fn (): string => ($this->family()['is_delivered'] ?? false) ? 'تحديث التسليم' : 'تم التسليم')
+                ->label('تم التسليم')
                 ->icon(Heroicon::OutlinedCheckCircle)
                 ->color('success')
                 ->disabled(fn (): bool => ! $this->canDeliver())
-                ->modalHeading(fn (): string => ($this->family()['is_delivered'] ?? false) ? 'تحديث التسليم' : 'تأكيد التسليم')
+                ->modalHeading('تأكيد التسليم')
                 ->modalDescription(null)
                 ->modalWidth(Width::Large)
                 ->extraModalWindowAttributes(['class' => 'hr-deliver-modal-window'])
@@ -239,7 +262,7 @@ class DeliverInsuranceCards extends Page
                         ->required()
                         ->live(),
                 ])
-                ->modalSubmitActionLabel(fn (): string => ($this->family()['is_delivered'] ?? false) ? 'حفظ التعديل' : 'تأكيد التسليم')
+                ->modalSubmitActionLabel('تأكيد التسليم')
                 ->modalCancelActionLabel('إلغاء')
                 ->action(function (array $data): void {
                     $deliveredTo = $data['delivered_to'] ?? '';

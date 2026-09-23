@@ -195,6 +195,7 @@ class ViewMedicalRegistration extends ViewRecord
     public function toggleInsuranceCardPrinted(string $personKey): void
     {
         abort_unless($this->canManageInsuranceCards(), 403);
+        abort_if($this->record->isLockedByCardDelivery(), 403);
 
         app(InsuranceCardPrintMarker::class)->toggle($this->getRecord(), $personKey);
 

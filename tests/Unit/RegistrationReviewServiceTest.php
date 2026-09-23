@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CardDeliveryRecipient;
 use App\Enums\RegistrationStatus;
 use App\Models\MedicalRegistration;
 use App\Models\User;
@@ -60,4 +61,19 @@ it('rejects invalid review transitions', function () {
         ->and(fn () => $service->decline($draft, $reviewer, 'سبب'))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $service->decline($declined, $reviewer, 'سبب'))->toThrow(InvalidArgumentException::class)
         ->and(fn () => $service->decline($approved, $reviewer, '   '))->toThrow(InvalidArgumentException::class);
+});
+
+it('rejects review actions when cards are already delivered', function () {
+    $service = app(RegistrationReviewService::class);
+    $reviewer = User::factory()->create();
+    $submitted = MedicalRegistration::factory()->submitted()->create();
+    $approved = MedicalRegistration::factory()->approved()->create();
+
+    $submitted->employee->markCardsDelivered($reviewer, CardDeliveryRecipient::Employee);
+    $approved->employee->markCardsDelivered($reviewer, CardDeliveryRecipient::Administration);
+
+    expect($service->canApprove($submitted->fresh()))->toBeFalse()
+        ->and($service->canDecline($approved->fresh()))->toBeFalse()
+        ->and(fn () => $service->approve($submitted->fresh(), $reviewer))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $service->decline($approved->fresh(), $reviewer, 'سبب'))->toThrow(InvalidArgumentException::class);
 });

@@ -10,6 +10,10 @@ class InsuranceCardPrintMarker
 {
     public function mark(MedicalRegistration $registration, ?string $personKey = null): void
     {
+        if ($registration->isLockedByCardDelivery()) {
+            return;
+        }
+
         $registration->loadMissing(['employee', 'beneficiaries']);
 
         if ($personKey === null || $personKey === '' || $personKey === 'employee') {
@@ -33,6 +37,10 @@ class InsuranceCardPrintMarker
 
     public function toggle(MedicalRegistration $registration, string $personKey): void
     {
+        if ($registration->isLockedByCardDelivery()) {
+            return;
+        }
+
         $registration->loadMissing(['employee', 'beneficiaries']);
 
         if ($personKey === 'employee') {

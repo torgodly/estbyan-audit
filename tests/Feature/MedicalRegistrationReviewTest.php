@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BloodType;
+use App\Enums\CardDeliveryRecipient;
 use App\Enums\RegistrationStatus;
 use App\Filament\Resources\MedicalRegistrations\Pages\ViewMedicalRegistration;
 use App\Models\Beneficiary;
@@ -153,4 +154,30 @@ it('hides approve action for already approved registrations', function () {
     Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
         ->assertActionHidden('approve')
         ->assertActionVisible('decline');
+});
+
+it('locks delivered registrations to view-only for everyone', function () {
+    $admin = User::factory()->create();
+    $support = User::factory()->smartCare()->create();
+    $registration = MedicalRegistration::factory()->approved()->create();
+    $registration->employee->markCardsDelivered($admin, CardDeliveryRecipient::Employee);
+
+    expect($registration->fresh()->isLockedByCardDelivery())->toBeTrue()
+        ->and($registration->fresh()->isEditableByEmployee())->toBeFalse()
+        ->and(app(RegistrationReviewService::class)->canApprove($registration->fresh()))->toBeFalse()
+        ->and(app(RegistrationReviewService::class)->canDecline($registration->fresh()))->toBeFalse();
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('تم التسليم — للعرض فقط')
+        ->assertActionHidden('approve')
+        ->assertActionHidden('decline');
+
+    $this->actingAs($support);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->call('toggleInsuranceCardPrinted', 'employee')
+        ->assertForbidden();
 });

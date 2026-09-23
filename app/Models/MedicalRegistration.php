@@ -138,7 +138,18 @@ class MedicalRegistration extends Model
 
     public function isEditableByEmployee(): bool
     {
+        if ($this->isLockedByCardDelivery()) {
+            return false;
+        }
+
         return $this->status->isEditableByEmployee();
+    }
+
+    public function isLockedByCardDelivery(): bool
+    {
+        $this->loadMissing('employee');
+
+        return $this->employee?->cardsAreDelivered() === true;
     }
 
     public static function generateReferenceNumber(): string

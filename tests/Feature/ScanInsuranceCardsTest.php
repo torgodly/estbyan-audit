@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BeneficiaryRelationship;
+use App\Enums\CardDeliveryRecipient;
 use App\Enums\Gender;
 use App\Filament\Pages\ScanInsuranceCards;
 use App\Models\Beneficiary;
@@ -227,4 +228,19 @@ it('shows a client-side cache clear control on the scan page', function () {
     Livewire::test(ScanInsuranceCards::class)
         ->assertSee('حذف الذاكرة')
         ->assertSeeHtml('estbyan.scan-insurance-cards');
+});
+
+it('rejects scanning cards for employees whose cards are already delivered', function () {
+    $support = User::factory()->smartCare()->create();
+    $hr = User::factory()->hr()->create();
+    $registration = MedicalRegistration::factory()->approved()->create();
+    $registration->employee->markCardsDelivered($hr, CardDeliveryRecipient::Employee);
+
+    $this->actingAs($support);
+
+    Livewire::test(ScanInsuranceCards::class)
+        ->set('scan', $registration->employee->card_number)
+        ->call('scanCard')
+        ->assertNotified('تم التسليم مسبقاً — للعرض فقط')
+        ->assertSet('scanned', []);
 });

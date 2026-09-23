@@ -464,7 +464,7 @@
                             'cards' => $insuranceCards,
                             'embedAssets' => false,
                             'preview' => true,
-                            'cardActions' => true,
+                            'cardActions' => ! $registration->isLockedByCardDelivery(),
                         ])
                     </div>
                     <div
@@ -491,6 +491,12 @@
                             <span class="hr-side-stat__label">الحالة الحالية</span>
                             <div class="hr-side-stat__value">{{ $registration->status->label() }}</div>
                         </div>
+                        @if ($registration->isLockedByCardDelivery())
+                            <div class="hr-side-stat">
+                                <span class="hr-side-stat__label">التسليم</span>
+                                <div class="hr-side-stat__value">تم التسليم — للعرض فقط</div>
+                            </div>
+                        @endif
                         <div class="hr-side-stat">
                             <span class="hr-side-stat__label">رقم المرجع</span>
                             <div class="hr-side-stat__value">{{ $registration->reference_number ?: '—' }}</div>

@@ -155,9 +155,18 @@ class InsuranceCardScanService
      */
     public function markPrinted(array $scanned): int
     {
+        $marked = 0;
+
         foreach ($scanned as $hit) {
+            $employee = Employee::query()->find($hit['employee_id'] ?? null);
+
+            if ($employee?->cardsAreDelivered()) {
+                continue;
+            }
+
             if (($hit['kind'] ?? '') === 'employee') {
-                Employee::query()->find($hit['employee_id'] ?? null)?->markCardPrinted();
+                $employee?->markCardPrinted();
+                $marked++;
 
                 continue;
             }
@@ -166,10 +175,11 @@ class InsuranceCardScanService
 
             if ($registration && filled($hit['person_key'] ?? null)) {
                 $this->marker->mark($registration, $hit['person_key']);
+                $marked++;
             }
         }
 
-        return count($scanned);
+        return $marked;
     }
 
     private function hitFromEmployee(Employee $employee, string $digits): InsuranceCardScanHit
