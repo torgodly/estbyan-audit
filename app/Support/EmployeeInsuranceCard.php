@@ -41,9 +41,11 @@ final readonly class EmployeeInsuranceCard
         $registration->loadMissing(['beneficiaries', 'employee']);
 
         return collect([self::from($registration)])
-            ->concat($registration->beneficiaries->map(
-                fn (Beneficiary $beneficiary): self => self::fromBeneficiary($registration, $beneficiary),
-            ))
+            ->concat(
+                $registration->beneficiaries
+                    ->reject(fn (Beneficiary $beneficiary): bool => $beneficiary->relationship?->isParent() === true)
+                    ->map(fn (Beneficiary $beneficiary): self => self::fromBeneficiary($registration, $beneficiary)),
+            )
             ->values();
     }
 

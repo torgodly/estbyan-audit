@@ -108,6 +108,36 @@ it('includes the employee and each beneficiary in the printable card pack', func
         ->and($cards->pluck('kind')->all())->toBe(['employee', 'beneficiary']);
 });
 
+it('excludes parent cards from the printable pack and pdf', function () {
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'خالد صالح',
+        'gender' => Gender::Male,
+    ]);
+
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'سارة خالد',
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'أحمد الأب',
+        'relationship' => BeneficiaryRelationship::Father,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'منى الأم',
+        'relationship' => BeneficiaryRelationship::Mother,
+    ]);
+
+    $cards = EmployeeInsuranceCard::collection($registration->fresh('beneficiaries'));
+
+    expect($cards)->toHaveCount(2)
+        ->and($cards->pluck('name')->all())->toBe(['خالد صالح', 'سارة خالد'])
+        ->and($cards->pluck('name')->all())->not->toContain('أحمد الأب')
+        ->and($cards->pluck('name')->all())->not->toContain('منى الأم');
+});
+
 it('keeps employee photos as urls on the request page and can still read the original file', function () {
     $path = 'registrations/tests/employee-photo.png';
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
