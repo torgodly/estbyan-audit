@@ -56,6 +56,19 @@ class MedicalRegistrationsTable
                     ->label('الرقم التأميني')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('national_id')
+                    ->label('الرقم الوطني')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query
+                            ->where('national_id', 'like', "%{$search}%")
+                            ->orWhereHas(
+                                'beneficiaries',
+                                fn (Builder $beneficiaryQuery): Builder => $beneficiaryQuery->where('national_id', 'like', "%{$search}%"),
+                            );
+                    })
+                    ->sortable()
+                    ->copyable()
+                    ->toggleable(),
                 TextColumn::make('workplace')
                     ->label('مكان العمل')
                     ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->workplaceLabel() ?? '—')

@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\BeneficiaryRelationship;
 use App\Enums\RegistrationStatus;
 use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
 use App\Filament\Resources\MedicalRegistrations\Pages\ListMedicalRegistrations;
+use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use Livewire\Livewire;
@@ -69,4 +71,38 @@ it('filters submissions by workplace', function () {
         ->filterTable('workplace', 'tripoli')
         ->assertSee('موظف طرابلس')
         ->assertDontSee('موظف سبها');
+});
+
+it('finds a registration by employee or family member national id', function () {
+    $admin = User::factory()->create();
+
+    $byEmployeeNid = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف بالرقم الوطني',
+        'national_id' => '219890263624',
+    ]);
+    $byFamilyNid = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف عبر المستفيد',
+        'national_id' => '119750300015',
+    ]);
+    $other = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف آخر',
+        'national_id' => '119800507148',
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $byFamilyNid->id,
+        'full_name' => 'زوجة المستفيد',
+        'national_id' => '219880112233',
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->set('activeTab', 'all')
+        ->searchTable('219890263624')
+        ->assertCanSeeTableRecords([$byEmployeeNid])
+        ->assertCanNotSeeTableRecords([$byFamilyNid, $other])
+        ->searchTable('219880112233')
+        ->assertCanSeeTableRecords([$byFamilyNid])
+        ->assertCanNotSeeTableRecords([$byEmployeeNid, $other]);
 });
