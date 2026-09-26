@@ -63,17 +63,25 @@ it('rejects invalid review transitions', function () {
         ->and(fn () => $service->decline($approved, $reviewer, '   '))->toThrow(InvalidArgumentException::class);
 });
 
-it('rejects review actions when cards are already delivered', function () {
+it('rejects review actions for hr when cards are already delivered', function () {
     $service = app(RegistrationReviewService::class);
-    $reviewer = User::factory()->create();
+    $hr = User::factory()->hr()->create();
+    $support = User::factory()->smartCare()->create();
     $submitted = MedicalRegistration::factory()->submitted()->create();
     $approved = MedicalRegistration::factory()->approved()->create();
 
-    $submitted->employee->markCardsDelivered($reviewer, CardDeliveryRecipient::Employee);
-    $approved->employee->markCardsDelivered($reviewer, CardDeliveryRecipient::Administration);
+    $submitted->employee->markCardsDelivered($hr, CardDeliveryRecipient::Employee);
+    $approved->employee->markCardsDelivered($hr, CardDeliveryRecipient::Administration);
 
-    expect($service->canApprove($submitted->fresh()))->toBeFalse()
-        ->and($service->canDecline($approved->fresh()))->toBeFalse()
-        ->and(fn () => $service->approve($submitted->fresh(), $reviewer))->toThrow(InvalidArgumentException::class)
-        ->and(fn () => $service->decline($approved->fresh(), $reviewer, 'سبب'))->toThrow(InvalidArgumentException::class);
+    expect($service->canApprove($submitted->fresh(), $hr))->toBeFalse()
+        ->and($service->canDecline($approved->fresh(), $hr))->toBeFalse()
+        ->and($service->canApprove($submitted->fresh(), $support))->toBeTrue()
+        ->and($service->canDecline($approved->fresh(), $support))->toBeTrue()
+        ->and(fn () => $service->approve($submitted->fresh(), $hr))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => $service->decline($approved->fresh(), $hr, 'سبب'))->toThrow(InvalidArgumentException::class);
+
+    $service->decline($approved->fresh(), $support, 'رفض بعد التسليم');
+
+    expect($approved->fresh()->status)->toBe(RegistrationStatus::Declined)
+        ->and($approved->fresh()->review_note)->toBe('رفض بعد التسليم');
 });

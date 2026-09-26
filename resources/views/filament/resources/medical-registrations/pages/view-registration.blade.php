@@ -571,9 +571,25 @@
 
                 <section class="hr-panel">
                     <div class="hr-panel__body">
-                        <p class="hr-empty__text" style="margin: 0;">
-                            استخدم أزرار <strong>اعتماد</strong> أو <strong>رفض</strong> أعلى الصفحة بعد مراجعة السجل الطبي والمستندات.
-                        </p>
+                        @if ($registration->isLockedByCardDelivery())
+                            @php
+                                $viewer = auth()->user();
+                                $supportCanReview = $viewer instanceof \App\Models\User && $viewer->canManageInsuranceCards();
+                            @endphp
+                            @if ($supportCanReview)
+                                <p class="hr-empty__text" style="margin: 0;">
+                                    تم تسليم البطاقات. يمكن لسمارت كير <strong>اعتماد</strong> أو <strong>رفض</strong> الطلب عند الحاجة.
+                                </p>
+                            @else
+                                <p class="hr-empty__text" style="margin: 0;">
+                                    تم تسليم البطاقات — هذا الطلب <strong>للعرض فقط</strong> ولا يمكن اعتماده أو رفضه.
+                                </p>
+                            @endif
+                        @else
+                            <p class="hr-empty__text" style="margin: 0;">
+                                استخدم أزرار <strong>اعتماد</strong> أو <strong>رفض</strong> أعلى الصفحة بعد مراجعة السجل الطبي والمستندات.
+                            </p>
+                        @endif
                     </div>
                 </section>
             </aside>

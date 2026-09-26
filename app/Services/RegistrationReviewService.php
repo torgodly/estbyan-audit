@@ -13,7 +13,7 @@ class RegistrationReviewService
 {
     public function approve(MedicalRegistration $registration, User $reviewer, ?string $note = null): void
     {
-        if (! $this->canApprove($registration)) {
+        if (! $this->canApprove($registration, $reviewer)) {
             throw new InvalidArgumentException('لا يمكن اعتماد هذا الطلب في حالته الحالية.');
         }
 
@@ -39,7 +39,7 @@ class RegistrationReviewService
             throw new InvalidArgumentException('سبب الرفض مطلوب.');
         }
 
-        if (! $this->canDecline($registration)) {
+        if (! $this->canDecline($registration, $reviewer)) {
             throw new InvalidArgumentException('لا يمكن رفض هذا الطلب في حالته الحالية.');
         }
 
@@ -55,9 +55,9 @@ class RegistrationReviewService
         });
     }
 
-    public function canApprove(MedicalRegistration $registration): bool
+    public function canApprove(MedicalRegistration $registration, ?User $reviewer = null): bool
     {
-        if ($registration->isLockedByCardDelivery()) {
+        if ($registration->isLockedByCardDelivery() && ! $this->canReviewAfterDelivery($reviewer)) {
             return false;
         }
 
@@ -67,9 +67,9 @@ class RegistrationReviewService
         ], true);
     }
 
-    public function canDecline(MedicalRegistration $registration): bool
+    public function canDecline(MedicalRegistration $registration, ?User $reviewer = null): bool
     {
-        if ($registration->isLockedByCardDelivery()) {
+        if ($registration->isLockedByCardDelivery() && ! $this->canReviewAfterDelivery($reviewer)) {
             return false;
         }
 
@@ -77,6 +77,11 @@ class RegistrationReviewService
             RegistrationStatus::Submitted,
             RegistrationStatus::Approved,
         ], true);
+    }
+
+    private function canReviewAfterDelivery(?User $reviewer): bool
+    {
+        return $reviewer?->canManageInsuranceCards() === true;
     }
 
     private function log(

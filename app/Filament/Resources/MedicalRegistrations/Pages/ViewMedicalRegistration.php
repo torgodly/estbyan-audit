@@ -64,7 +64,7 @@ class ViewMedicalRegistration extends ViewRecord
                 ->label('اعتماد')
                 ->color('success')
                 ->icon('heroicon-o-check-circle')
-                ->visible(fn (): bool => $review->canApprove($this->record))
+                ->visible(fn (): bool => $review->canApprove($this->getRecord(), Auth::user()))
                 ->requiresConfirmation()
                 ->modalHeading('اعتماد الطلب')
                 ->modalDescription('سيُقفل الطلب أمام الموظف بعد الاعتماد.')
@@ -78,12 +78,18 @@ class ViewMedicalRegistration extends ViewRecord
                     assert($reviewer instanceof User);
 
                     $review->approve(
-                        $this->record,
+                        $this->getRecord(),
                         $reviewer,
                         $data['review_note'] ?? null,
                     );
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+                    $this->refreshFormData([
+                        'status',
+                        'review_note',
+                        'reviewed_at',
+                        'reviewed_by',
+                    ]);
+                    $this->getRecord()->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
 
                     Notification::make()->title('تم اعتماد الطلب')->success()->send();
                 }),
@@ -91,7 +97,7 @@ class ViewMedicalRegistration extends ViewRecord
                 ->label('رفض')
                 ->color('danger')
                 ->icon('heroicon-o-x-circle')
-                ->visible(fn (): bool => $review->canDecline($this->record))
+                ->visible(fn (): bool => $review->canDecline($this->getRecord(), Auth::user()))
                 ->requiresConfirmation()
                 ->modalHeading('رفض الطلب')
                 ->modalDescription('سيتمكن الموظف من تعديل الطلب وإعادة إرساله.')
@@ -106,12 +112,18 @@ class ViewMedicalRegistration extends ViewRecord
                     assert($reviewer instanceof User);
 
                     $review->decline(
-                        $this->record,
+                        $this->getRecord(),
                         $reviewer,
                         (string) ($data['review_note'] ?? ''),
                     );
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+                    $this->refreshFormData([
+                        'status',
+                        'review_note',
+                        'reviewed_at',
+                        'reviewed_by',
+                    ]);
+                    $this->getRecord()->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
 
                     Notification::make()->title('تم رفض الطلب')->danger()->send();
                 }),
@@ -195,7 +207,7 @@ class ViewMedicalRegistration extends ViewRecord
     public function toggleInsuranceCardPrinted(string $personKey): void
     {
         abort_unless($this->canManageInsuranceCards(), 403);
-        abort_if($this->record->isLockedByCardDelivery(), 403);
+        abort_if($this->isReviewLocked(), 403);
 
         app(InsuranceCardPrintMarker::class)->toggle($this->getRecord(), $personKey);
 
@@ -212,6 +224,15 @@ class ViewMedicalRegistration extends ViewRecord
         return $count + $registration->beneficiaries->filter(
             fn (Beneficiary $beneficiary): bool => $beneficiary->cardIsPrinted(),
         )->count();
+    }
+
+    public function isReviewLocked(): bool
+    {
+        $registration = $this->getRecord();
+        $registration->unsetRelation('employee');
+        $registration->loadMissing('employee');
+
+        return $registration->isLockedByCardDelivery();
     }
 
     private function refreshInsuranceCardRecords(): void

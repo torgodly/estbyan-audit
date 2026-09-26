@@ -156,28 +156,62 @@ it('hides approve action for already approved registrations', function () {
         ->assertActionVisible('decline');
 });
 
-it('locks delivered registrations to view-only for everyone', function () {
-    $admin = User::factory()->create();
+it('locks delivered registrations for hr but lets support approve or decline', function () {
+    $admin = User::factory()->hr()->create();
     $support = User::factory()->smartCare()->create();
     $registration = MedicalRegistration::factory()->approved()->create();
     $registration->employee->markCardsDelivered($admin, CardDeliveryRecipient::Employee);
 
     expect($registration->fresh()->isLockedByCardDelivery())->toBeTrue()
         ->and($registration->fresh()->isEditableByEmployee())->toBeFalse()
-        ->and(app(RegistrationReviewService::class)->canApprove($registration->fresh()))->toBeFalse()
-        ->and(app(RegistrationReviewService::class)->canDecline($registration->fresh()))->toBeFalse();
+        ->and(app(RegistrationReviewService::class)->canApprove($registration->fresh(), $admin))->toBeFalse()
+        ->and(app(RegistrationReviewService::class)->canDecline($registration->fresh(), $admin))->toBeFalse()
+        ->and(app(RegistrationReviewService::class)->canDecline($registration->fresh(), $support))->toBeTrue();
 
     $this->actingAs($admin);
 
     Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
         ->assertSuccessful()
         ->assertSee('تم التسليم — للعرض فقط')
+        ->assertSee('ولا يمكن اعتماده أو رفضه')
         ->assertActionHidden('approve')
         ->assertActionHidden('decline');
 
     $this->actingAs($support);
 
     Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('تم التسليم — للعرض فقط')
+        ->assertSee('يمكن لسمارت كير')
+        ->assertActionHidden('approve')
+        ->assertActionVisible('decline')
+        ->callAction('decline', data: [
+            'review_note' => 'رفض بعد التسليم من الدعم',
+        ])
+        ->assertHasNoActionErrors()
         ->call('toggleInsuranceCardPrinted', 'employee')
         ->assertForbidden();
+
+    expect($registration->fresh()->status)->toBe(RegistrationStatus::Declined)
+        ->and($registration->fresh()->review_note)->toBe('رفض بعد التسليم من الدعم');
+});
+
+it('lets support approve a delivered submitted registration', function () {
+    $support = User::factory()->smartCare()->create();
+    $submitted = MedicalRegistration::factory()->submitted()->create();
+    $submitted->employee->markCardsDelivered($support, CardDeliveryRecipient::Administration);
+
+    $this->actingAs($support);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $submitted->getRouteKey()])
+        ->assertSuccessful()
+        ->assertActionVisible('approve')
+        ->assertActionVisible('decline')
+        ->callAction('approve', data: [
+            'review_note' => 'اعتماد بعد التسليم',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect($submitted->fresh()->status)->toBe(RegistrationStatus::Approved)
+        ->and($submitted->fresh()->review_note)->toBe('اعتماد بعد التسليم');
 });
