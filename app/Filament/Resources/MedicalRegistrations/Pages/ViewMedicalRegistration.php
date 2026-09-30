@@ -10,11 +10,18 @@ use App\Services\InsuranceCardPrintMarker;
 use App\Services\ReferenceCardGenerator;
 use App\Services\RegistrationReviewService;
 use App\Support\EmployeeInsuranceCard;
+use App\Support\RegistrationDocuments;
+use App\Support\RegistrationUploads;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -127,6 +134,85 @@ class ViewMedicalRegistration extends ViewRecord
 
                     Notification::make()->title('تم رفض الطلب')->danger()->send();
                 }),
+            Action::make('editRegistrationPhotos')
+                ->label('تعديل الصور')
+                ->icon('heroicon-o-pencil-square')
+                ->color('warning')
+                ->visible(fn (): bool => $this->canEditRegistration())
+                ->modalHeading('تعديل صور الطلب')
+                ->modalDescription('خاص بسمارت كير: استبدال صورة الموظف أو أي مستفيد دون فتح الطلب لتعديل الموظف.')
+                ->modalWidth(Width::ThreeExtraLarge)
+                ->modalSubmitActionLabel('حفظ الصور')
+                ->fillForm(function (): array {
+                    $registration = $this->getRecord();
+                    $registration->loadMissing('beneficiaries');
+
+                    return [
+                        'employee_photo_path' => $registration->employee_photo_path,
+                        'beneficiaries' => $registration->beneficiaries
+                            ->map(fn (Beneficiary $beneficiary): array => [
+                                'id' => $beneficiary->id,
+                                'full_name' => $beneficiary->full_name,
+                                'relationship_label' => $beneficiary->relationship?->label($registration->gender) ?? 'مستفيد',
+                                'photo_path' => $beneficiary->photo_path,
+                            ])
+                            ->values()
+                            ->all(),
+                    ];
+                })
+                ->schema([
+                    FileUpload::make('employee_photo_path')
+                        ->label('صورة الموظف')
+                        ->disk(RegistrationDocuments::diskName())
+                        ->directory(fn (): string => 'registrations/'.$this->getRecord()->uuid)
+                        ->visibility('private')
+                        ->image()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png'])
+                        ->maxSize(RegistrationUploads::MAX_KILOBYTES)
+                        ->helperText(RegistrationUploads::sizeHint())
+                        ->downloadable()
+                        ->openable(),
+                    Repeater::make('beneficiaries')
+                        ->label('صور المستفيدين')
+                        ->schema([
+                            Hidden::make('id'),
+                            TextInput::make('full_name')
+                                ->label('الاسم')
+                                ->disabled()
+                                ->dehydrated(false),
+                            TextInput::make('relationship_label')
+                                ->label('صلة القرابة')
+                                ->disabled()
+                                ->dehydrated(false),
+                            FileUpload::make('photo_path')
+                                ->label('الصورة')
+                                ->disk(RegistrationDocuments::diskName())
+                                ->directory(fn (): string => 'registrations/'.$this->getRecord()->uuid.'/beneficiaries')
+                                ->visibility('private')
+                                ->image()
+                                ->acceptedFileTypes(['image/jpeg', 'image/png'])
+                                ->maxSize(RegistrationUploads::MAX_KILOBYTES)
+                                ->helperText(RegistrationUploads::sizeHint())
+                                ->downloadable()
+                                ->openable(),
+                        ])
+                        ->columns(2)
+                        ->addable(false)
+                        ->deletable(false)
+                        ->reorderable(false)
+                        ->itemLabel(fn (array $state): ?string => $state['full_name'] ?? null)
+                        ->collapsed(false),
+                ])
+                ->action(function (array $data): void {
+                    $this->saveRegistrationPhotos(
+                        self::storedUploadPath($data['employee_photo_path'] ?? null),
+                        collect($data['beneficiaries'] ?? [])
+                            ->mapWithKeys(fn (array $item): array => [
+                                (int) ($item['id'] ?? 0) => self::storedUploadPath($item['photo_path'] ?? null),
+                            ])
+                            ->all(),
+                    );
+                }),
             Action::make('viewEmployee')
                 ->label('ملف الموظف')
                 ->icon('heroicon-o-user')
@@ -172,6 +258,74 @@ class ViewMedicalRegistration extends ViewRecord
         $user = Auth::user();
 
         return $user instanceof User && $user->canManageInsuranceCards();
+    }
+
+    public function canEditRegistration(): bool
+    {
+        return $this->canManageInsuranceCards();
+    }
+
+    /**
+     * @param  array<int, string|null>  $beneficiaryPhotoPaths
+     */
+    public function saveRegistrationPhotos(?string $employeePhotoPath, array $beneficiaryPhotoPaths = []): void
+    {
+        abort_unless($this->canEditRegistration(), 403);
+
+        $registration = $this->getRecord();
+        $oldEmployeePhoto = $registration->employee_photo_path;
+
+        $registration->forceFill([
+            'employee_photo_path' => $employeePhotoPath,
+        ])->save();
+
+        if (
+            filled($oldEmployeePhoto)
+            && $oldEmployeePhoto !== $employeePhotoPath
+            && RegistrationDocuments::disk()->exists($oldEmployeePhoto)
+        ) {
+            RegistrationDocuments::disk()->delete($oldEmployeePhoto);
+        }
+
+        $beneficiariesById = $registration->beneficiaries()->get()->keyBy('id');
+
+        foreach ($beneficiaryPhotoPaths as $beneficiaryId => $photoPath) {
+            $beneficiary = $beneficiariesById->get((int) $beneficiaryId);
+
+            if ($beneficiary === null) {
+                continue;
+            }
+
+            $oldPhoto = $beneficiary->photo_path;
+
+            $beneficiary->forceFill([
+                'photo_path' => $photoPath,
+            ])->save();
+
+            if (
+                filled($oldPhoto)
+                && $oldPhoto !== $photoPath
+                && RegistrationDocuments::disk()->exists($oldPhoto)
+            ) {
+                RegistrationDocuments::disk()->delete($oldPhoto);
+            }
+        }
+
+        $this->getRecord()->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+
+        Notification::make()
+            ->title('تم تحديث الصور')
+            ->success()
+            ->send();
+    }
+
+    private static function storedUploadPath(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $value = array_values(array_filter($value, fn (mixed $item): bool => filled($item)))[0] ?? null;
+        }
+
+        return filled($value) ? (string) $value : null;
     }
 
     public function insuranceCardPrintHtml(?string $personKey = null): string
