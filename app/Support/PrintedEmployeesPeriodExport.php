@@ -3,7 +3,9 @@
 namespace App\Support;
 
 use App\Enums\BeneficiaryRelationship;
+use App\Models\Beneficiary;
 use App\Models\Employee;
+use App\Models\MedicalRegistration;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +21,11 @@ class PrintedEmployeesPeriodExport
     public const STATUS = 'تمت الطباعه';
 
     public const TIMEZONE = 'Africa/Tripoli';
+
+    public static function placeLabel(): string
+    {
+        return 'الفرع';
+    }
 
     /**
      * @return list<string>
@@ -47,7 +54,10 @@ class PrintedEmployeesPeriodExport
                         BeneficiaryRelationship::Mother->value,
                     ]),
             )
-            ->with(['latestSubmittedRegistration', 'latestMedicalRegistration'])
+            ->with([
+                'latestSubmittedRegistration.beneficiaries',
+                'latestMedicalRegistration.beneficiaries',
+            ])
             ->orderBy('full_name')
             ->orderBy('id');
     }
@@ -73,6 +83,48 @@ class PrintedEmployeesPeriodExport
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<array{name: string, workplace: string, cards: int}>
+     */
+    public static function slips(CarbonInterface|string $from, CarbonInterface|string $until): array
+    {
+        return self::query($from, $until)
+            ->get()
+            ->map(function (Employee $employee): array {
+                $registration = $employee->latestSubmittedRegistration
+                    ?? $employee->latestMedicalRegistration;
+
+                return [
+                    'name' => $employee->full_name ?: ($registration?->full_name ?: '—'),
+                    'workplace' => $employee->workplaceLabel()
+                        ?? $registration?->workplaceLabel()
+                        ?? '—',
+                    'cards' => 1 + self::countedFamilyMembers($registration),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private static function countedFamilyMembers(?MedicalRegistration $registration): int
+    {
+        if ($registration === null) {
+            return 0;
+        }
+
+        return $registration->beneficiaries
+            ->filter(fn (Beneficiary $beneficiary): bool => self::countsTowardCards($beneficiary))
+            ->count();
+    }
+
+    private static function countsTowardCards(Beneficiary $beneficiary): bool
+    {
+        return ! in_array($beneficiary->relationship, [
+            BeneficiaryRelationship::Father,
+            BeneficiaryRelationship::Mother,
+        ], true);
     }
 
     public static function binary(CarbonInterface|string $from, CarbonInterface|string $until): string

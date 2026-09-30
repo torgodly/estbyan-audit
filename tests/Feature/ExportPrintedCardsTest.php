@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use App\Support\PrintedEmployeesPeriodExport;
+use App\Support\PrintedEmployeesPeriodPdf;
 use Carbon\Carbon;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -29,7 +30,8 @@ it('lets support users open the printed cards export', function () {
         ->assertSee('تصدير البطاقات المطبوعة')
         ->assertSee('من تاريخ')
         ->assertSee('إلى تاريخ')
-        ->assertSee('تصدير Excel');
+        ->assertSee('تصدير Excel')
+        ->assertSee('تحميل PDF');
 });
 
 it('exports only employees printed in the selected period', function () {
@@ -104,6 +106,12 @@ it('hides a printed employee when a non-parent family member is not printed', fu
     $rows = PrintedEmployeesPeriodExport::rows('2026-09-24', '2026-09-24');
 
     expect(collect($rows)->pluck('name')->all())->toBe(['الوالدان غير مطبوعين']);
+
+    $slips = PrintedEmployeesPeriodExport::slips('2026-09-24', '2026-09-24');
+
+    expect($slips)->toHaveCount(1)
+        ->and($slips[0]['name'])->toBe('الوالدان غير مطبوعين')
+        ->and($slips[0]['cards'])->toBe(2);
 });
 
 it('builds an arabic excel workbook for the selected period', function () {
@@ -147,6 +155,45 @@ it('lets support export the selected period from the page', function () {
             'printed_until' => '2026-09-24',
         ])
         ->call('export')
+        ->assertHasNoFormErrors()
+        ->assertFileDownloaded();
+});
+
+it('builds an a4 pdf with four slips per page without counting parents', function () {
+    $printedAt = Carbon::parse('2026-09-24 09:00:00', PrintedEmployeesPeriodExport::TIMEZONE);
+
+    foreach (range(1, 5) as $index) {
+        Employee::factory()->create([
+            'full_name' => "موظف رقم {$index}",
+            'workplace' => 'tripoli',
+            'card_printed_at' => $printedAt,
+        ]);
+    }
+
+    $binary = PrintedEmployeesPeriodPdf::binary('2026-09-24', '2026-09-24');
+
+    expect($binary)->toStartWith('%PDF-1.4')
+        ->and(substr_count($binary, '/Type /Page /Parent'))->toBe(2)
+        ->and($binary)->toContain('/MediaBox [0 0 842 595]');
+});
+
+it('lets support export the selected period as pdf', function () {
+    $support = User::factory()->smartCare()->create();
+
+    Employee::factory()->create([
+        'full_name' => 'موظف للـ PDF',
+        'workplace' => 'tripoli',
+        'card_printed_at' => Carbon::parse('2026-09-24 09:00:00', PrintedEmployeesPeriodExport::TIMEZONE),
+    ]);
+
+    $this->actingAs($support);
+
+    Livewire::test(ExportPrintedCards::class)
+        ->fillForm([
+            'printed_from' => '2026-09-24',
+            'printed_until' => '2026-09-24',
+        ])
+        ->call('exportPdf')
         ->assertHasNoFormErrors()
         ->assertFileDownloaded();
 });
