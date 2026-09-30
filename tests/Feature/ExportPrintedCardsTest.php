@@ -1,7 +1,10 @@
 <?php
 
+use App\Enums\BeneficiaryRelationship;
 use App\Filament\Pages\ExportPrintedCards;
+use App\Models\Beneficiary;
 use App\Models\Employee;
+use App\Models\MedicalRegistration;
 use App\Models\User;
 use App\Support\PrintedEmployeesPeriodExport;
 use Carbon\Carbon;
@@ -52,6 +55,55 @@ it('exports only employees printed in the selected period', function () {
         ->and($rows[0]['name'])->toBe('أحمد المطبوع اليوم')
         ->and($rows[0]['workplace'])->toBe('طرابلس')
         ->and($rows[0]['status'])->toBe('تمت الطباعه');
+});
+
+it('hides a printed employee when a non-parent family member is not printed', function () {
+    $printedAt = Carbon::parse('2026-09-24 10:00:00', PrintedEmployeesPeriodExport::TIMEZONE);
+
+    $parentsOnlyMissing = Employee::factory()->create([
+        'full_name' => 'الوالدان غير مطبوعين',
+        'card_printed_at' => $printedAt,
+    ]);
+    $parentsRegistration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $parentsOnlyMissing->id,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $parentsRegistration->id,
+        'relationship' => BeneficiaryRelationship::Spouse,
+        'card_printed_at' => $printedAt,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $parentsRegistration->id,
+        'relationship' => BeneficiaryRelationship::Father,
+        'card_printed_at' => null,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $parentsRegistration->id,
+        'relationship' => BeneficiaryRelationship::Mother,
+        'card_printed_at' => null,
+    ]);
+
+    $childMissing = Employee::factory()->create([
+        'full_name' => 'ابن غير مطبوع',
+        'card_printed_at' => $printedAt,
+    ]);
+    $childRegistration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $childMissing->id,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $childRegistration->id,
+        'relationship' => BeneficiaryRelationship::Son,
+        'card_printed_at' => null,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $childRegistration->id,
+        'relationship' => BeneficiaryRelationship::Mother,
+        'card_printed_at' => $printedAt,
+    ]);
+
+    $rows = PrintedEmployeesPeriodExport::rows('2026-09-24', '2026-09-24');
+
+    expect(collect($rows)->pluck('name')->all())->toBe(['الوالدان غير مطبوعين']);
 });
 
 it('builds an arabic excel workbook for the selected period', function () {

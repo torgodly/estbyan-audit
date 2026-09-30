@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\BeneficiaryRelationship;
 use App\Models\Employee;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -37,6 +38,15 @@ class PrintedEmployeesPeriodExport
         return Employee::query()
             ->whereNotNull('card_printed_at')
             ->whereBetween('card_printed_at', [$start, $end])
+            ->whereDoesntHave(
+                'medicalRegistrations.beneficiaries',
+                fn (Builder $query) => $query
+                    ->whereNull('card_printed_at')
+                    ->whereNotIn('relationship', [
+                        BeneficiaryRelationship::Father->value,
+                        BeneficiaryRelationship::Mother->value,
+                    ]),
+            )
             ->with(['latestSubmittedRegistration', 'latestMedicalRegistration'])
             ->orderBy('full_name')
             ->orderBy('id');
