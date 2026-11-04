@@ -66,6 +66,11 @@
     ];
     $positiveFlags = collect($medicalFlags)->where('value', true)->values();
     $defaultOpen = $positiveFlags->first()['key'] ?? 'chronic';
+    $employee = $registration->employee;
+    $cardsDelivered = $employee?->cardsAreDelivered() === true;
+    $deliveredToLabel = $employee?->cards_delivered_to?->getLabel();
+    $deliveredAt = $employee?->cards_delivered_at?->timezone(config('app.timezone'))->format('Y-m-d H:i');
+    $deliveredByName = $employee?->cardsDeliveredBy?->name;
 @endphp
 
 @if ($this->canManageInsuranceCards())
@@ -149,6 +154,11 @@
                                 <span class="hr-chip hr-chip--{{ $registration->status->value }}">
                                     {{ $registration->status->label() }}
                                 </span>
+                                @if ($cardsDelivered)
+                                    <span class="hr-chip hr-chip--approved">تم التسليم</span>
+                                @else
+                                    <span class="hr-chip hr-chip--editing">لم يُسلَّم</span>
+                                @endif
                                 @if (filled($registration->reference_number))
                                     <span class="hr-chip">{{ $registration->reference_number }}</span>
                                 @endif
@@ -491,12 +501,23 @@
                             <span class="hr-side-stat__label">الحالة الحالية</span>
                             <div class="hr-side-stat__value">{{ $registration->status->label() }}</div>
                         </div>
-                        @if ($registration->isLockedByCardDelivery())
-                            <div class="hr-side-stat">
-                                <span class="hr-side-stat__label">التسليم</span>
+                        <div class="hr-side-stat">
+                            <span class="hr-side-stat__label">تسليم البطاقات</span>
+                            @if ($cardsDelivered)
                                 <div class="hr-side-stat__value">تم التسليم — للعرض فقط</div>
-                            </div>
-                        @endif
+                                <div class="hr-side-stat__meta">
+                                    إلى {{ $deliveredToLabel ?? '—' }}
+                                    @if (filled($deliveredAt))
+                                        · {{ $deliveredAt }}
+                                    @endif
+                                    @if (filled($deliveredByName))
+                                        · بواسطة {{ $deliveredByName }}
+                                    @endif
+                                </div>
+                            @else
+                                <div class="hr-side-stat__value">لم يُسلَّم بعد</div>
+                            @endif
+                        </div>
                         <div class="hr-side-stat">
                             <span class="hr-side-stat__label">رقم المرجع</span>
                             <div class="hr-side-stat__value">{{ $registration->reference_number ?: '—' }}</div>

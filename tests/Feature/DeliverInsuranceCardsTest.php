@@ -20,16 +20,24 @@ function markFamilyCardsPrinted(MedicalRegistration $registration): void
     }
 }
 
-it('hides the delivery page from smart care users', function () {
+it('lets support users open the delivery page and mark cards delivered', function () {
     $support = User::factory()->smartCare()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create();
 
     $this->actingAs($support);
 
     Livewire::test(DeliverInsuranceCards::class)
-        ->assertForbidden();
+        ->assertSuccessful()
+        ->assertSee('تسليم بطاقات التأمين')
+        ->set('scan', $registration->employee->card_number)
+        ->call('scanCard')
+        ->callAction('markDelivered', [
+            'delivered_to' => CardDeliveryRecipient::Employee->value,
+        ])
+        ->assertNotified('تم تسليم بطاقات الموظف '.$registration->employee->full_name.' بنجاح');
 
-    $this->get(DeliverInsuranceCards::getUrl())
-        ->assertForbidden();
+    expect($registration->employee->fresh()->cardsAreDelivered())->toBeTrue()
+        ->and($registration->employee->fresh()->cards_delivered_by)->toBe($support->id);
 });
 
 it('lets hr users open the delivery page', function () {
@@ -296,6 +304,60 @@ it('delivers a complete family to the employee or administration', function () {
     expect($employee->cardsAreDelivered())->toBeTrue()
         ->and($employee->cards_delivered_to)->toBe(CardDeliveryRecipient::Administration)
         ->and($employee->cards_delivered_by)->toBe($hr->id);
+});
+
+it('finds a person by name, family card number, or a shared name', function () {
+    $hr = User::factory()->hr()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'سالم البحث',
+        'phone' => '0910001122',
+    ]);
+    $registration->employee->forceFill([
+        'full_name' => 'سالم البحث',
+    ])->save();
+    $spouse = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'هدى البحث الخاص',
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
+    $other = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'آخر البحث الخاص',
+    ]);
+    $other->employee->forceFill([
+        'full_name' => 'آخر البحث الخاص',
+    ])->save();
+
+    $this->actingAs($hr);
+
+    $byName = Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', 'هدى البحث الخاص')
+        ->call('scanCard');
+
+    expect($byName->instance()->scanned)->toHaveCount(1)
+        ->and($byName->instance()->scanned[0]['card_number'])->toBe($spouse->card_number);
+
+    $byCard = Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', 'SC-'.$spouse->card_number)
+        ->call('scanCard');
+
+    expect($byCard->instance()->scanned)->toHaveCount(1)
+        ->and($byCard->instance()->family()['employee_name'])->toBe('سالم البحث');
+
+    $byPhone = Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', '0910001122')
+        ->call('scanCard');
+
+    expect($byPhone->instance()->scanned[0]['name'])->toBe('سالم البحث');
+
+    Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', 'البحث الخاص')
+        ->call('scanCard')
+        ->assertSet('scanned', [])
+        ->assertSee('هدى البحث الخاص')
+        ->assertSee('آخر البحث الخاص')
+        ->call('selectMatch', $spouse->card_number)
+        ->assertSet('matches', [])
+        ->assertSee('سالم البحث');
 });
 
 it('can start another family after the current one is delivered', function () {

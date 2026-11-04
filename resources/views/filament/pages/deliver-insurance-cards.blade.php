@@ -17,7 +17,7 @@
                         @if ($family)
                             أكمل بطاقات هذه العائلة، ثم سجّل التسليم. الأب والأم غير مطلوبين.
                         @else
-                            امسح أي بطاقة من العائلة للبدء. لا يمكن فتح عائلة ثانية قبل إنهاء الحالية.
+                            ابحث بالاسم أو رقم البطاقة أو رقم أحد أفراد العائلة. لا يمكن فتح عائلة ثانية قبل إنهاء الحالية.
                         @endif
                     </p>
                 </div>
@@ -38,13 +38,35 @@
                         wire:model="scan"
                         class="hr-deliver__input"
                         autocomplete="off"
-                        inputmode="numeric"
                         autofocus
-                        placeholder="SC-12345678"
-                        aria-label="رقم بطاقة التأمين"
+                        placeholder="اسم، رقم بطاقة، رقم وطني"
+                        aria-label="بحث عن موظف أو بطاقة"
+                        dir="auto"
                     >
-                    <button type="submit" class="hr-card-action">إضافة</button>
+                    <button type="submit" class="hr-card-action">بحث</button>
                 </form>
+                @if ($this->matches !== [])
+                    <div class="hr-deliver-matches">
+                        <p class="hr-panel__meta">عدة نتائج. اختر الشخص لإضافة بطاقته.</p>
+                        @foreach ($this->matches as $match)
+                            <button
+                                type="button"
+                                class="hr-deliver-match"
+                                wire:click="selectMatch({{ \Illuminate\Support\Js::from($match['card_number']) }})"
+                            >
+                                <span class="hr-deliver-match__who">
+                                    <strong>{{ $match['name'] }}</strong>
+                                    <span>
+                                        {{ $match['role_label'] }}
+                                        @if (filled($match['card_label'] ?? null) && $match['card_label'] !== '—')
+                                            · {{ $match['card_label'] }}
+                                        @endif
+                                    </span>
+                                </span>
+                            </button>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </section>
 
@@ -64,7 +86,7 @@
                 <div class="hr-panel__body">
                     <div class="hr-empty">
                         <p class="hr-empty__title">لا توجد عائلة قيد التسليم</p>
-                        <p class="hr-empty__text">امسح بطاقة الموظف أو أحد أفراد العائلة. بعد اكتمال كل البطاقات اضغط «تم التسليم» واختر جهة الاستلام.</p>
+                        <p class="hr-empty__text">ابحث بالاسم أو رقم البطاقة أو رقم بطاقة أحد أفراد العائلة. بعد اكتمال كل البطاقات اضغط «تم التسليم» واختر جهة الاستلام.</p>
                     </div>
                 </div>
             </section>

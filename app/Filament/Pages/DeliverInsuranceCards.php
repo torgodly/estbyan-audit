@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Services\InsuranceCardScanService;
 use App\Support\InsuranceCardNumber;
+use App\Support\InsuranceCardScanHit;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ViewField;
@@ -51,6 +52,11 @@ class DeliverInsuranceCards extends Page
     public array $scanned = [];
 
     /**
+     * @var list<array<string, mixed>>
+     */
+    public array $matches = [];
+
+    /**
      * @var array{name: string, recipient: string}|null
      */
     public ?array $deliveryNotice = null;
@@ -59,12 +65,12 @@ class DeliverInsuranceCards extends Page
     {
         $user = Auth::user();
 
-        return $user instanceof User && $user->isHr();
+        return $user instanceof User && ($user->isHr() || $user->canManageInsuranceCards());
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'تسليم عائلة واحدة في كل مرة. أنهِ التسليم أو أفرغ القائمة قبل بدء عائلة أخرى.';
+        return 'ابحث بالاسم أو رقم البطاقة أو الرقم الوطني، ثم سجّل التسليم. عائلة واحدة في كل مرة.';
     }
 
     /**
@@ -95,19 +101,64 @@ class DeliverInsuranceCards extends Page
 
         $raw = trim($this->scan);
         $this->reset('scan');
+        $this->matches = [];
         $this->dispatch('insurance-card-scanned');
 
-        if (InsuranceCardNumber::normalize($raw) === null) {
+        if ($raw === '') {
+            return;
+        }
+
+        $service = app(InsuranceCardScanService::class);
+
+        if (InsuranceCardNumber::normalize($raw) !== null) {
+            $hit = $service->find($raw);
+
+            if ($hit === null) {
+                Notification::make()
+                    ->title('لم يتم العثور على البطاقة')
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+
+            $this->addHit($hit);
+
+            return;
+        }
+
+        $hits = $service->search($raw);
+
+        if ($hits === []) {
             Notification::make()
-                ->title('رقم البطاقة غير صالح')
-                ->body('امسح باركود البطاقة أو أدخل الرقم المكوّن من 8 أرقام.')
+                ->title('لا توجد نتائج')
+                ->body('ابحث بالاسم أو رقم البطاقة أو رقم بطاقة فرد العائلة أو الرقم الوطني أو الرقم التأميني.')
                 ->danger()
                 ->send();
 
             return;
         }
 
-        $hit = app(InsuranceCardScanService::class)->find($raw);
+        if (count($hits) === 1) {
+            $this->addHit($hits[0]);
+
+            return;
+        }
+
+        $this->matches = array_map(
+            fn (InsuranceCardScanHit $hit): array => [
+                ...$hit->toArray(),
+                'card_label' => $hit->cardLabel(),
+            ],
+            $hits,
+        );
+    }
+
+    public function selectMatch(string $cardNumber): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $hit = app(InsuranceCardScanService::class)->find($cardNumber);
 
         if ($hit === null) {
             Notification::make()
@@ -118,28 +169,9 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
-        $activeEmployeeId = $this->activeEmployeeId();
-
-        if ($activeEmployeeId !== null && $hit->employeeId !== $activeEmployeeId) {
-            Notification::make()
-                ->title('أنهِ تسليم هذه العائلة أولاً')
-                ->body('امسح بقية بطاقات هذه العائلة ثم اضغط تم التسليم، أو أفرغ القائمة للبدء من جديد.')
-                ->warning()
-                ->send();
-
-            return;
+        if ($this->addHit($hit)) {
+            $this->matches = [];
         }
-
-        $existingIndex = collect($this->scanned)->search(
-            fn (array $item): bool => $item['card_number'] === $hit->cardNumber,
-        );
-
-        if ($existingIndex !== false) {
-            return;
-        }
-
-        $this->scanned[] = $hit->toArray();
-        $this->deliveryNotice = null;
     }
 
     public function removeCard(string $cardNumber): void
@@ -157,6 +189,7 @@ class DeliverInsuranceCards extends Page
         abort_unless(static::canAccess(), 403);
 
         $this->scanned = [];
+        $this->matches = [];
     }
 
     public function markDelivered(string|CardDeliveryRecipient $deliveredTo): void
@@ -282,6 +315,34 @@ class DeliverInsuranceCards extends Page
                     $this->clearScanned();
                 }),
         ];
+    }
+
+    private function addHit(InsuranceCardScanHit $hit): bool
+    {
+        $activeEmployeeId = $this->activeEmployeeId();
+
+        if ($activeEmployeeId !== null && $hit->employeeId !== $activeEmployeeId) {
+            Notification::make()
+                ->title('أنهِ تسليم هذه العائلة أولاً')
+                ->body('امسح بقية بطاقات هذه العائلة ثم اضغط تم التسليم، أو أفرغ القائمة للبدء من جديد.')
+                ->warning()
+                ->send();
+
+            return false;
+        }
+
+        $existingIndex = collect($this->scanned)->search(
+            fn (array $item): bool => $item['card_number'] === $hit->cardNumber,
+        );
+
+        if ($existingIndex !== false) {
+            return true;
+        }
+
+        $this->scanned[] = $hit->toArray();
+        $this->deliveryNotice = null;
+
+        return true;
     }
 
     private function activeEmployeeId(): ?int

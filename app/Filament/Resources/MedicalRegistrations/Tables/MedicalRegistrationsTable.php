@@ -6,6 +6,7 @@ use App\Enums\RegistrationStatus;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use App\Support\InsuranceCardFamily;
+use App\Support\PeopleSearch;
 use App\Support\RegistrationDocuments;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -26,6 +27,13 @@ class MedicalRegistrationsTable
 
         return $table
             ->defaultSort('submitted_at', 'desc')
+            ->searchPlaceholder('الاسم، رقم البطاقة، رقم فرد العائلة، الرقم الوطني، الرقم التأميني')
+            ->searchable([
+                fn (Builder $query, string $search): Builder => tap(
+                    $query,
+                    fn (Builder $query): mixed => PeopleSearch::constrainRegistrations($query, $search),
+                ),
+            ])
             ->columns([
                 ImageColumn::make('employee_photo_path')
                     ->label('الصورة')

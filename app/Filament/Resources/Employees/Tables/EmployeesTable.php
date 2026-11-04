@@ -7,12 +7,14 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Support\InsuranceCardFamily;
 use App\Support\InsuranceCardNumber;
+use App\Support\PeopleSearch;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class EmployeesTable
@@ -23,6 +25,13 @@ class EmployeesTable
 
         return $table
             ->defaultSort('full_name')
+            ->searchPlaceholder('الاسم، رقم البطاقة، رقم فرد العائلة، الرقم الوطني، الرقم التأميني')
+            ->searchable([
+                fn (Builder $query, string $search): Builder => tap(
+                    $query,
+                    fn (Builder $query): mixed => PeopleSearch::constrainEmployees($query, $search),
+                ),
+            ])
             ->columns([
                 TextColumn::make('full_name')
                     ->label('الاسم')

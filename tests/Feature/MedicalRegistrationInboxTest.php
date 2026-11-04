@@ -106,3 +106,41 @@ it('finds a registration by employee or family member national id', function () 
         ->assertCanSeeTableRecords([$byFamilyNid])
         ->assertCanNotSeeTableRecords([$byEmployeeNid, $other]);
 });
+
+it('finds a registration by card number, family card number, family name, or phone', function () {
+    $admin = User::factory()->create();
+
+    $byEmployeeCard = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف البطاقة',
+        'phone' => '0921112233',
+    ]);
+    $byFamilyCard = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف العائلة',
+    ]);
+    $other = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف بعيد',
+        'phone' => '0919998877',
+    ]);
+    $spouse = Beneficiary::factory()->create([
+        'medical_registration_id' => $byFamilyCard->id,
+        'full_name' => 'مريم رقم البطاقة',
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->set('activeTab', 'all')
+        ->searchTable($byEmployeeCard->employee->card_number)
+        ->assertCanSeeTableRecords([$byEmployeeCard])
+        ->assertCanNotSeeTableRecords([$byFamilyCard, $other])
+        ->searchTable('SC-'.$spouse->card_number)
+        ->assertCanSeeTableRecords([$byFamilyCard])
+        ->assertCanNotSeeTableRecords([$byEmployeeCard, $other])
+        ->searchTable('مريم رقم')
+        ->assertCanSeeTableRecords([$byFamilyCard])
+        ->assertCanNotSeeTableRecords([$byEmployeeCard, $other])
+        ->searchTable('0921112233')
+        ->assertCanSeeTableRecords([$byEmployeeCard])
+        ->assertCanNotSeeTableRecords([$byFamilyCard, $other]);
+});

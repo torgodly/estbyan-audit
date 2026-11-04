@@ -9,6 +9,8 @@ use App\Models\MedicalRegistration;
 use App\Support\EmployeeInsuranceCard;
 use App\Support\InsuranceCardNumber;
 use App\Support\InsuranceCardScanHit;
+use App\Support\PeopleSearch;
+use Illuminate\Database\Eloquent\Builder;
 
 class InsuranceCardScanService
 {
@@ -42,6 +44,74 @@ class InsuranceCardScanService
         }
 
         return $this->hitFromBeneficiary($beneficiary, $digits);
+    }
+
+    /**
+     * @return list<InsuranceCardScanHit>
+     */
+    public function search(string $raw): array
+    {
+        $term = trim($raw);
+
+        if ($term === '') {
+            return [];
+        }
+
+        $like = PeopleSearch::like($term);
+        $cardLike = PeopleSearch::cardLike($term);
+        $hits = [];
+
+        $employees = Employee::query()
+            ->with(['latestSubmittedRegistration', 'latestMedicalRegistration'])
+            ->where(function (Builder $query) use ($like, $cardLike): void {
+                PeopleSearch::applyEmployeeTerms($query, $like, $cardLike);
+
+                $query->orWhereHas('medicalRegistrations', function (Builder $registration) use ($like, $cardLike): void {
+                    $registration->where('full_name', 'like', $like)
+                        ->orWhere('employee_number', 'like', $like)
+                        ->orWhere('national_id', 'like', $like)
+                        ->orWhere('reference_number', 'like', $like)
+                        ->orWhere('phone', 'like', $like)
+                        ->orWhere('whatsapp', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+
+                    if ($cardLike !== null) {
+                        $registration->orWhere('employee_number', 'like', $cardLike)
+                            ->orWhere('national_id', 'like', $cardLike)
+                            ->orWhere('phone', 'like', $cardLike);
+                    }
+                });
+            })
+            ->orderBy('full_name')
+            ->limit(8)
+            ->get();
+
+        foreach ($employees as $employee) {
+            if (! InsuranceCardNumber::isValid($employee->card_number)) {
+                continue;
+            }
+
+            $hits[$employee->card_number] = $this->hitFromEmployee($employee, $employee->card_number);
+        }
+
+        $beneficiaries = Beneficiary::query()
+            ->with('medicalRegistration.employee')
+            ->where(function (Builder $query) use ($like, $cardLike): void {
+                PeopleSearch::applyBeneficiaryTerms($query, $like, $cardLike);
+            })
+            ->orderBy('full_name')
+            ->limit(8)
+            ->get();
+
+        foreach ($beneficiaries as $beneficiary) {
+            if ($beneficiary->medicalRegistration?->employee === null || ! InsuranceCardNumber::isValid($beneficiary->card_number)) {
+                continue;
+            }
+
+            $hits[$beneficiary->card_number] = $this->hitFromBeneficiary($beneficiary, $beneficiary->card_number);
+        }
+
+        return array_values($hits);
     }
 
     /**

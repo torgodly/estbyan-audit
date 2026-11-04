@@ -156,6 +156,28 @@ it('hides approve action for already approved registrations', function () {
         ->assertActionVisible('decline');
 });
 
+it('shows whether insurance cards have been delivered on the registration page', function () {
+    $admin = User::factory()->hr()->create(['name' => 'موظف الموارد']);
+    $pending = MedicalRegistration::factory()->submitted()->create();
+    $delivered = MedicalRegistration::factory()->approved()->create();
+    $delivered->employee->markCardsDelivered($admin, CardDeliveryRecipient::Administration);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $pending->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('لم يُسلَّم')
+        ->assertSee('لم يُسلَّم بعد')
+        ->assertDontSee('تم التسليم — للعرض فقط');
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $delivered->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('تم التسليم')
+        ->assertSee('تم التسليم — للعرض فقط')
+        ->assertSee('إلى الإدارة')
+        ->assertSee('بواسطة موظف الموارد');
+});
+
 it('locks delivered registrations for hr but lets support approve or decline', function () {
     $admin = User::factory()->hr()->create();
     $support = User::factory()->smartCare()->create();

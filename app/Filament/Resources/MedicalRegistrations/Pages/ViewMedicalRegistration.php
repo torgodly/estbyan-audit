@@ -49,7 +49,7 @@ class ViewMedicalRegistration extends ViewRecord
     {
         parent::mount($record);
 
-        $this->record->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+        $this->record->loadMissing(['employee.cardsDeliveredBy', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
     }
 
     public function content(Schema $schema): Schema
@@ -96,7 +96,7 @@ class ViewMedicalRegistration extends ViewRecord
                         'reviewed_at',
                         'reviewed_by',
                     ]);
-                    $this->getRecord()->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+                    $this->getRecord()->refresh()->loadMissing(['employee.cardsDeliveredBy', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
 
                     Notification::make()->title('تم اعتماد الطلب')->success()->send();
                 }),
@@ -130,7 +130,7 @@ class ViewMedicalRegistration extends ViewRecord
                         'reviewed_at',
                         'reviewed_by',
                     ]);
-                    $this->getRecord()->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+                    $this->getRecord()->refresh()->loadMissing(['employee.cardsDeliveredBy', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
 
                     Notification::make()->title('تم رفض الطلب')->danger()->send();
                 }),
@@ -311,7 +311,7 @@ class ViewMedicalRegistration extends ViewRecord
             }
         }
 
-        $this->getRecord()->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+        $this->getRecord()->refresh()->loadMissing(['employee.cardsDeliveredBy', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
 
         Notification::make()
             ->title('تم تحديث الصور')
@@ -391,6 +391,6 @@ class ViewMedicalRegistration extends ViewRecord
 
     private function refreshInsuranceCardRecords(): void
     {
-        $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
+        $this->record->refresh()->loadMissing(['employee.cardsDeliveredBy', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
     }
 }

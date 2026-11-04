@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\BeneficiaryRelationship;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Pages\CreateEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
+use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
@@ -119,6 +121,39 @@ it('lists employees and supports search', function () {
         ->assertCanNotSeeTableRecords(
             Employee::query()->where('employee_number', '1102')->get()
         );
+});
+
+it('finds an employee by family member name or card number', function () {
+    $admin = User::factory()->create();
+
+    $employee = Employee::factory()->create([
+        'full_name' => 'موظف رب الأسرة',
+        'employee_number' => '4401',
+    ]);
+    $other = Employee::factory()->create([
+        'full_name' => 'موظف لا علاقة',
+        'employee_number' => '4402',
+    ]);
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $employee->id,
+        'full_name' => $employee->full_name,
+        'employee_number' => $employee->employee_number,
+    ]);
+    $spouse = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'سلمى بطاقة العائلة',
+        'relationship' => BeneficiaryRelationship::Spouse,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListEmployees::class)
+        ->searchTable('سلمى بطاقة')
+        ->assertCanSeeTableRecords([$employee])
+        ->assertCanNotSeeTableRecords([$other])
+        ->searchTable('SC-'.$spouse->card_number)
+        ->assertCanSeeTableRecords([$employee])
+        ->assertCanNotSeeTableRecords([$other]);
 });
 
 it('filters employees who submitted the form versus those who have not', function () {
